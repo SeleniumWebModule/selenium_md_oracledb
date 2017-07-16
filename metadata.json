@@ -1,0 +1,15 @@
+{
+  "name": "rjconsultores-seleniummdoracledb",
+  "version": "0.0.1",
+  "author": "rjconsultores",
+  "summary": "MÃ³dulo para provisionamento da instalaÃÃ£o e confiraÃÃ£ do banco de dados",
+  "license": "Apache-2.0",
+  "source": "https://github.com/SeleniumWebModule/seleniummdoracledb",
+  "project_page": "https://github.com/SeleniumWebModule/seleniummdoracledb",
+  "issues_url": "https://github.com/SeleniumWebModule/seleniummdoracledb/issues",
+  "dependencies": [
+    {"name":"puppetlabs-stdlib","version_requirement":">= 1.0.0"}
+  ],
+  "data_provider": null
+}
+
