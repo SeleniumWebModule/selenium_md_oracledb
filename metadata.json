@@ -8,7 +8,8 @@
   "project_page": "https://github.com/SeleniumWebModule/seleniummdoracledb",
   "issues_url": "https://github.com/SeleniumWebModule/seleniummdoracledb/issues",
   "dependencies": [
-    {"name":"puppetlabs-stdlib","version_requirement":">= 1.0.0"}
+    {"name":"puppetlabs-stdlib","version_requirement":">= 1.0.0"},
+    {"name":"biemond-oradb","version_requirement":"=3.0.10"}
   ],
   "data_provider": null
 }
