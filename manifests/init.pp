@@ -3,8 +3,8 @@
 #
 # Classe que contém o módulo para provisionamento do banco de dados oracle, versão express.
 # O Objetivo do módulo é ser gerenciado pelo Selenium Web App e nunca diretamente.
-# Para instalar o módulo no servidor do Selenium, fornecer também os fontes da instalação 
-# do oracle
+# Para instalar o módulo no servidor do Selenium, fornecer os fontes da instalação 
+# do oracle (oracle-xe-11.2.0-1.0.x86_64.rpm.zip)
 #
 # Parameters
 # ----------
@@ -78,9 +78,9 @@ class selenium_md_oracledb {
 	  comment     => "This user oracle was created by Puppet",
 	  require     => Group[$all_groups],
 	  managehome  => true,
-	}
+	} ->
 
-	package {'unzip':
+	/*package {'unzip':
 		ensure => present
 	} ->
 
@@ -98,6 +98,10 @@ class selenium_md_oracledb {
 		path => '/usr/bin',
 		cwd  => '/opt',
 		timeout => 0
+	} ->*/
+
+	package {'git':
+		ensure => present
 	} ->
 
 	class{'selenium_md_oracledb::docker::init':}
