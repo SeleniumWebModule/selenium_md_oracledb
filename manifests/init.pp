@@ -67,6 +67,10 @@ class selenium_md_oracledb {
   		ensure      => present,
 	}
 
+	swap_file::files { 'default':
+  		ensure   => present,
+	}->
+
 	user { 'oracle' :
 	  ensure      => present,
 	  uid         => 500,
@@ -79,26 +83,6 @@ class selenium_md_oracledb {
 	  require     => Group[$all_groups],
 	  managehome  => true,
 	} ->
-
-	/*package {'unzip':
-		ensure => present
-	} ->
-
-	exec {'copy_arquive_to_install':
-		command => 'cp -R /vagrant/pkg/*.zip /opt',
-		user => 'root',
-		group => 'root',
-		path => '/usr/bin'
-	} ->
-
-	exec {'extract_files_to_install':
-		command => 'unzip linux.x64_11gR2_database_1of2.zip',
-		user => 'root',
-		group => 'root',
-		path => '/usr/bin',
-		cwd  => '/opt',
-		timeout => 0
-	} ->*/
 
 	package {'git':
 		ensure => present
