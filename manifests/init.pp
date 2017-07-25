@@ -1,7 +1,10 @@
 # Class: selenium_md_oracledb
 # ===========================
 #
-# Full description of class selenium_md_oracledb here.
+# Classe que contém o módulo para provisionamento do banco de dados oracle, versão express.
+# O Objetivo do módulo é ser gerenciado pelo Selenium Web App e nunca diretamente.
+# Para instalar o módulo no servidor do Selenium, fornecer também os fontes da instalação 
+# do oracle
 #
 # Parameters
 # ----------
@@ -28,20 +31,74 @@
 # --------
 #
 # @example
-#    class { 'selenium_md_oracledb':
+#    class { 'seleniummdoracledb':
 #      servers => [ 'pool.ntp.org', 'ntp.local.company.com' ],
 #    }
 #
 # Authors
 # -------
 #
-# Author Name <author@domain.com>
+# Author Name eduardo@rjconsultores.com.br
 #
 # Copyright
 # ---------
 #
-# Copyright 2017 Your name here, unless otherwise noted.
+# Copyright 2017 Eduardo Dicarte.
 #
 class selenium_md_oracledb {
-     
+	# disable the firewall
+	service { iptables:
+	  enable    => false,
+	  ensure    => false,
+	  hasstatus => true,
+	}
+
+	# set the tmpfs
+	mount { '/dev/shm':
+	  ensure      => present,
+	  atboot      => true,
+	  device      => 'tmpfs',
+	  fstype      => 'tmpfs',
+	  options     => 'size=13500m',
+	}
+
+	$all_groups = ['oinstall','dba', 'oracle','oper']
+ 	group { $all_groups :
+  		ensure      => present,
+	}
+
+	user { 'oracle' :
+	  ensure      => present,
+	  uid         => 500,
+	  gid         => 'oinstall',
+	  groups      => ['oinstall','dba','oper', 'root'],
+	  shell       => '/bin/bash',
+	  password    => '$1$DSJ51vh6$4XzzwyIOk6Bi/54kglGk3.',
+	  home        => "/home/oracle",
+	  comment     => "This user oracle was created by Puppet",
+	  require     => Group[$all_groups],
+	  managehome  => true,
+	}
+
+	package {'unzip':
+		ensure => present
+	} ->
+
+	exec {'copy_arquive_to_install':
+		command => 'cp -R /vagrant/pkg/*.zip /opt',
+		user => 'root',
+		group => 'root',
+		path => '/usr/bin'
+	} ->
+
+	exec {'extract_files_to_install':
+		command => 'unzip linux.x64_11gR2_database_1of2.zip',
+		user => 'root',
+		group => 'root',
+		path => '/usr/bin',
+		cwd  => '/opt',
+		timeout => 0
+	} ->
+
+	class{'selenium_md_oracledb::docker::init':}
 }
