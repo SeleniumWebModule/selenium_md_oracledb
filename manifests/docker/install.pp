@@ -13,7 +13,7 @@ class selenium_md_oracledb::docker::install {
 	} ->
 
   exec {'copy_arquive_to_install':
-		command => 'cp oracle-xe-11.2.0-1.0.x86_64.rpm.zip /tmp/docker_images/OracleDatabase/dockerfiles/11.2.0.2/',
+		command => 'cp *.zip /tmp/',
 		user => 'root',
 		group => 'root',
 		path => '/usr/bin',
