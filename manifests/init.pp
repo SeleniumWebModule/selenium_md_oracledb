@@ -135,12 +135,30 @@ class selenium_md_oracledb {
 		cwd => '/vagrant/pkg'
 	} ->  
 	
-	exec {'extract':
+	exec {'extract_part1':
 		command => 'unzip linux.x64_11gR2_database_1of2.zip',
 		user => 'oracle',
 		group => 'dba',
 		path => '/usr/bin',
 		cwd => '/opt/oradb',
 		timeout => 0
+	} -> 
+
+	exec {'extract_part2':
+		command => 'unzip linux.x64_11gR2_database_2of2.zip',
+		user => 'oracle',
+		group => 'dba',
+		path => '/usr/bin',
+		cwd => '/opt/oradb',
+		timeout => 0
+	} -> 
+
+	#Oracle exige esses arquivos, não sei pra que :(
+	exec { 'install_x_window':
+		command     => 'yum groupinstall "X Window System" -y',
+		path        => '/bin',
+		user        => 'root',
+		group       => 'root',
+		timeout     => 0
 	}
 }
