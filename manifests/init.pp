@@ -84,7 +84,7 @@ class selenium_md_oracledb {
 	  managehome  => true,
 	} ->
 
-	 sysctl { 'kernel.msgmnb':                 ensure => 'present', permanent => 'yes', value => '65536',}
+	sysctl { 'kernel.msgmnb':                 ensure => 'present', permanent => 'yes', value => '65536',}
 	sysctl { 'kernel.msgmax':                 ensure => 'present', permanent => 'yes', value => '65536',}
 	sysctl { 'kernel.shmmax':                 ensure => 'present', permanent => 'yes', value => '2588483584',}
 	sysctl { 'kernel.shmall':                 ensure => 'present', permanent => 'yes', value => '2097152',}
@@ -114,31 +114,33 @@ class selenium_md_oracledb {
  	$install = [ 'binutils.x86_64', 'compat-libstdc++-33.x86_64', 'glibc.x86_64','ksh.x86_64','libaio.x86_64',
              'libgcc.x86_64', 'libstdc++.x86_64', 'make.x86_64','compat-libcap1.x86_64', 'gcc.x86_64',
              'gcc-c++.x86_64','glibc-devel.x86_64','libaio-devel.x86_64','libstdc++-devel.x86_64',
-             'sysstat.x86_64','unixODBC-devel','glibc.i686','libXext.x86_64','libXtst.x86_64']
+             'sysstat.x86_64','unixODBC-devel','glibc.i686','libXext.x86_64','libXtst.x86_64','unzip']
 	 
 	package { $install:
 	  ensure  => present,
 	} ->
 
+	file {'/opt/oradb/':		
+		ensure => 'directory',
+		owner  => 'oracle',
+		group  => 'dba',
+		mode   => '0750'
+	} ->
+
 	exec {'copy_arquive_to_install':
-		command => 'cp *.zip /tmp/',
+		command => 'cp *.zip /opt/oradb',
 		user => 'oracle',
 		group => 'dba',
 		path => '/usr/bin',
 		cwd => '/vagrant/pkg'
-	} ->
-
-	oradb::installdb { '112010_Linux-x86-64':
-  		version       => '11.2.0.1',
-  		file          => 'linux.x64_11gR2_database',
-  		database_type => 'SE',
-  		oracle_base   => '/oracle',
-  		oracle_home   => '/oracle/product/11.2/db',
-  		user          => 'oracle',
-  		group         => 'dba',
-  		group_install => 'oinstall',
-  		group_oper    => 'oper',
-  		download_dir  => '/tmp/',
-  		zip_extract   => true,
-  	}
+	} ->  
+	
+	exec {'extract':
+		command => 'unzip linux.x64_11gR2_database_1of2.zip',
+		user => 'oracle',
+		group => 'dba',
+		path => '/usr/bin',
+		cwd => '/opt/oradb',
+		timeout => 0
+	}
 }
