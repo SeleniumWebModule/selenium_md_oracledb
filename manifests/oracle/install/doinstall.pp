@@ -1,4 +1,6 @@
 class selenium_md_oracledb::oracle::install::doinstall {
+  require selenium_md_oracledb::oracle::install::prepare
+
 	$path_respfile = "/opt/oradb/database/response/db_install.rsp"
 	
 	file {'db_install.rsp':
@@ -13,6 +15,6 @@ class selenium_md_oracledb::oracle::install::doinstall {
   		path        => '/usr/bin',
   		cwd         => '/opt/oradb/database',
   		user        => 'oracle',
-  		unless      => 'ls /opt/oradb/u01/',
+  		unless      => 'ls /opt/oradb/u01/'
   	} 
 }

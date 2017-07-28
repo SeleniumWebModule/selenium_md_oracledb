@@ -48,7 +48,6 @@
 class selenium_md_oracledb {
 	class {'selenium_md_oracledb::kernel::configure':}             ->
 	class {'selenium_md_oracledb::oracle::install::dependencies':} ->
-	class {'selenium_md_oracledb::oracle::install::prepare':}    ->
-	class {'selenium_md_oracledb::oracle::install::doinstall':}      ->
-	class {'selenium_md_oracledb::oracle::install::cleanup':}       
+	class {'selenium_md_oracledb::oracle::install::prepare':}      ->
+	class {'selenium_md_oracledb::oracle::install::doinstall':}    
  }

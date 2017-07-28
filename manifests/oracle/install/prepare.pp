@@ -1,4 +1,6 @@
 class selenium_md_oracledb::oracle::install::prepare {
+	require selenium_md_oracledb::oracle::install::dependencies 
+
 	$all_groups = ['oinstall','dba', 'oracle','oper']
 
 	# disable the firewall

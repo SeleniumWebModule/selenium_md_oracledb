@@ -28,7 +28,7 @@ class selenium_md_oracledb::kernel::configure {
 	sysctl { 'net.core.rmem_default':         ensure => 'present', permanent => 'yes', value => '262144',} 
 	sysctl { 'net.core.rmem_max':             ensure => 'present', permanent => 'yes', value => '4194304', } 
 	sysctl { 'net.core.wmem_default':         ensure => 'present', permanent => 'yes', value => '262144',} 
-	sysctl { 'net.core.wmem_max':             ensure => 'present', permanent => 'yes', value => '1048576',} 
+	sysctl { 'net.core.wmem_max':             ensure => 'present', permanent => 'yes', value => '1048576',} ->
 
 	class { 'limits':
   		config => {
@@ -38,5 +38,6 @@ class selenium_md_oracledb::kernel::configure {
                              'stack'  => { soft => '10240'  ,},},
              },
   		use_hiera => false,
+  		before => Class['selenium_md_oracledb::oracle::install::dependencies']
 	}
 }
