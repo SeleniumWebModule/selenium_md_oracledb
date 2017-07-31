@@ -46,8 +46,8 @@
 # Copyright 2017 Eduardo Dicarte.
 #
 class selenium_md_oracledb {
-	class {'selenium_md_oracledb::kernel::configure':}             ->
-	class {'selenium_md_oracledb::oracle::install::dependencies':} ->
-	class {'selenium_md_oracledb::oracle::install::prepare':}      ->
-	class {'selenium_md_oracledb::oracle::install::doinstall':}    
+	include selenium_md_oracledb::kernel::configure
+	include selenium_md_oracledb::oracle::install::dependencies
+	include selenium_md_oracledb::oracle::install::prepare
+	include selenium_md_oracledb::oracle::install::doinstall
  }

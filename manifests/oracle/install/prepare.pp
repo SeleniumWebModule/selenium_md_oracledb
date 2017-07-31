@@ -41,6 +41,7 @@ class selenium_md_oracledb::oracle::install::prepare {
 		group => 'dba',
 		path => '/usr/bin',
 		cwd => '/vagrant/pkg',
+		timeout => 0,
 		unless      => 'ls /opt/oradb/u01/',
 	} ->  
 	
