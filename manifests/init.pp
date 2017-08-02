@@ -50,4 +50,6 @@ class selenium_md_oracledb {
 	include selenium_md_oracledb::oracle::install::dependencies
 	include selenium_md_oracledb::oracle::install::prepare
 	include selenium_md_oracledb::oracle::install::doinstall
+	include selenium_md_oracledb::oracle::configure::network
+	include selenium_md_oracledb::oracle::configure::database
  }
