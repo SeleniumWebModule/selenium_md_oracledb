@@ -31,9 +31,11 @@
 # --------
 #
 # @example
-#    class { 'seleniummdoracledb':
-#      servers => [ 'pool.ntp.org', 'ntp.local.company.com' ],
-#    }
+#    class {'selenium_md_oracledb':
+#		oracleHome => "/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1",
+#		dbname     => "banco",
+#		systempass => "senha",
+#	}
 #
 # Authors
 # -------
@@ -45,11 +47,8 @@
 #
 # Copyright 2017 Eduardo Dicarte.
 #
-class selenium_md_oracledb {
-	$oracleHome = "/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1"
-	$dbname = "VTABOL"
-	$userdb = "system"
-	$passdb = "vtax05"
+class selenium_md_oracledb ($oracleHome, $dbname, $systempass) {
+	$systemusr = "system"
 		
 	include selenium_md_oracledb::kernel::init		
 	

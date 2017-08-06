@@ -33,7 +33,7 @@ class selenium_md_oracledb::oracle::configure::service {
 	} ->
 
 	exec {'init_database':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @startup.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @startup.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
 		user        => 'oracle',
