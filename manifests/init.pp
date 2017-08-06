@@ -46,10 +46,13 @@
 # Copyright 2017 Eduardo Dicarte.
 #
 class selenium_md_oracledb {
-	include selenium_md_oracledb::kernel::configure
-	include selenium_md_oracledb::oracle::install::dependencies
-	include selenium_md_oracledb::oracle::install::prepare
-	include selenium_md_oracledb::oracle::install::doinstall
-	include selenium_md_oracledb::oracle::configure::network
-	include selenium_md_oracledb::oracle::configure::database
+	$oracleHome = "/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1"
+	$dbname = "VTABOL"
+	$userdb = "system"
+	$passdb = "vtax05"
+		
+	include selenium_md_oracledb::kernel::init		
+	
+	include selenium_md_oracledb::oracle::exec::init
+	include selenium_md_oracledb::oracle::configure::init
  }
