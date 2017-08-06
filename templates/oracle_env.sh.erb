@@ -1,10 +1,9 @@
-#oracle database
+#oracle init steps to database
+
 export ORACLE_SID=ORCL
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
-export ORACLE_HOME=/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1/
+export ORACLE_HOME=/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1
 export TNS_ADMIN=$ORACLE_HOME/network/admin
-
-iptables -F
 
 export PATH=$ORACLE_HOME/bin:$PATH
 
