@@ -1,11 +1,12 @@
 class selenium_md_oracledb::kernel::configure {
+
 	# set the tmpfs
 	mount { '/dev/shm':
 	  ensure      => present,
 	  atboot      => true,
 	  device      => 'tmpfs',
 	  fstype      => 'tmpfs',
-	  options     => 'size=1196m',
+	  options     => 'size=1196m'
 	} 
 
 	swap_file::files { 'default':

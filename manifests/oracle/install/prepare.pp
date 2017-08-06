@@ -2,7 +2,6 @@ class selenium_md_oracledb::oracle::install::prepare {
 	require selenium_md_oracledb::oracle::install::dependencies 
 
 	$all_groups = ['oinstall','dba', 'oracle','oper']
-	$oracleHome = "/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1"
 
 	# disable the firewall
 	service { iptables:
@@ -33,17 +32,17 @@ class selenium_md_oracledb::oracle::install::prepare {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0750',
-		ignore => 'ls /opt/oradb/u01/'
+		ignore => "ls $selenium_md_oracledb::oracleHome",
 	} ->
 
 	exec {'copy_arquive_to_install':
 		command => 'cp *.zip /opt/oradb',
-		user => 'oracle',
-		group => 'dba',
-		path => '/usr/bin',
-		cwd => '/vagrant/pkg',
+		user    => 'oracle',
+		group   => 'dba',
+		path    => '/usr/bin',
+		cwd     => '/vagrant/pkg',
 		timeout => 0,
-		unless      => 'ls /opt/oradb/u01/',
+		unless  => "ls $selenium_md_oracledb::oracleHome",
 	} ->  
 	
 	exec {'extract_part1':
@@ -53,7 +52,7 @@ class selenium_md_oracledb::oracle::install::prepare {
 		path => '/usr/bin',
 		cwd => '/opt/oradb',
 		timeout => 0,
-		unless      => 'ls /opt/oradb/u01/',
+		unless      => "ls $selenium_md_oracledb::oracleHome",
 	}  ->
 
 	exec {'extract_part2':
@@ -63,20 +62,6 @@ class selenium_md_oracledb::oracle::install::prepare {
 		path => '/usr/bin',
 		cwd => '/opt/oradb',
 		timeout => 0,
-		unless      => 'ls /opt/oradb/u01/',
-	} ->
-
-	file {'oracle_env.sh':
-		ensure => file,
-    	path    => '/etc/profile.d/oracle_env.sh',
-    	owner   => 'root',
-    	content => template("selenium_md_oracledb/oracle_env.sh.erb"),
-    	mode    => '0775',
-  	} -> 
-
-  	exec{'run_profile':
-  		command => 'sh /etc/profile.d/oracle_env.sh',
-  		user    => 'root',
-  		path    => '/usr/bin'
-  	}
+		unless      => "ls $selenium_md_oracledb::oracleHome",
+	}
 }

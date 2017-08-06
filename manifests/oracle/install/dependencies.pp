@@ -15,6 +15,6 @@ class selenium_md_oracledb::oracle::install::dependencies {
 		user        => 'root',
 		group       => 'root',
 		timeout     => 0,
-		unless      => 'ls /opt/oradb/u01/',
+		unless      => "ls ${selenium_md_oracledb::oracleHome}",
 	}         
 }
