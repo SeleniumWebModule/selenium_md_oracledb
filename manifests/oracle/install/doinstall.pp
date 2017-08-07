@@ -1,6 +1,11 @@
 class selenium_md_oracledb::oracle::install::doinstall {
   require selenium_md_oracledb::oracle::install::prepare
 
+  $oracleBase = $selenium_md_oracledb::oracleBase
+  $oracleBaseApp = $selenium_md_oracledb::oracleBaseApp
+  $oracleHome = $selenium_md_oracledb::oracleHome
+  $sid = $selenium_md_oracledb::sid
+
 	$path_respfile = "/opt/oradb/database/response/db_install.rsp"
 	
 	file {'db_install.rsp':

@@ -1,4 +1,7 @@
 class selenium_md_oracledb::oracle::exec::environment_variables {
+  $sid = $selenium_md_oracledb::sid
+  $oracleHome = $selenium_md_oracledb::oracleHome
+
 	file {'oracle_env.sh':
 		ensure => file,
     	path    => '/etc/profile.d/oracle_env.sh',

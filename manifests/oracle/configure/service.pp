@@ -1,4 +1,10 @@
 class selenium_md_oracledb::oracle::configure::service {
+
+	$dbname = $selenium_md_oracledb::dbname
+	$oracleHome = $selenium_md_oracledb::oracleHome
+	$sid = $selenium_md_oracledb::sid
+	$portdb = $selenium_md_oracledb::portdb
+
 	file {'listener':
 		ensure  => file,
 		path    => "${selenium_md_oracledb::oracleHome}/network/admin/listener.ora",

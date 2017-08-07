@@ -3,6 +3,9 @@ class selenium_md_oracledb::oracle::configure::network {
 
   $path_rsp = "/opt/oradb/database/response"
 	$path_netca = "${path_rsp}/netca.rsp"
+
+  $portdb = $selenium_md_oracledb::portdb
+  
 	
 	file {'netca.rsp':
     	ensure  => file,

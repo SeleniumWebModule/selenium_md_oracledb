@@ -4,6 +4,12 @@ class selenium_md_oracledb::oracle::configure::database {
   $path_rsp = "/opt/oradb/database/response"
   $path_dbca  = "${path_rsp}/dbca.rsp"
 
+  $oracleVersion = $selenium_md_oracledb::oracleVersion
+  $dbname = $selenium_md_oracledb::dbname
+  $sid = $selenium_md_oracledb::sid
+  $systempass = $selenium_md_oracledb::systempass
+  
+
   file {'dbca.rsp':
       ensure => file,
       path    => "${path_dbca}",
@@ -16,6 +22,6 @@ class selenium_md_oracledb::oracle::configure::database {
       path         =>  "/usr/bin",
       user         => 'oracle',
       timeout      =>  0,
-      unless       => "test -d /opt/oradb/u01/app/oracle/admin/${selenium_md_oracledb::dbname}"
+      unless       => "test -d $selenium_md_oracledb::oracleBaseApp/admin/${selenium_md_oracledb::dbname}"
   } 
 }
