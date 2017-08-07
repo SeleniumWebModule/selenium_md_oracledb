@@ -6,18 +6,18 @@ oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_sch
 oracle.install.option=INSTALL_DB_SWONLY
 ORACLE_HOSTNAME=singleinstance.db.com
 UNIX_GROUP_NAME=oinstall
-INVENTORY_LOCATION=/opt/oradb/u01/oraInventory
+INVENTORY_LOCATION=<%= @oracleBase %>/oraInventory
 SELECTED_LANGUAGES=en,pt_BR
 
 #------------------------------------------------------------------------------
 # Specify the complete path of the Oracle Home.
 #------------------------------------------------------------------------------
-ORACLE_HOME=/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1
+ORACLE_HOME=<%= @oracleHome %>
 
 #------------------------------------------------------------------------------
 # Specify the complete path of the Oracle Base. 
 #------------------------------------------------------------------------------
-ORACLE_BASE=/opt/oradb/u01/app/oracle
+ORACLE_BASE=<%= @oracleBaseApp %>
 
 oracle.install.db.InstallEdition=EE
 
@@ -28,42 +28,21 @@ oracle.install.db.customComponents=oracle.server:11.2.0.1.0,oracle.sysman.ccr:10
 oracle.install.db.DBA_GROUP=dba
 oracle.install.db.OPER_GROUP=oper
 
-oracle.install.db.CLUSTER_NODES=
-
 oracle.install.db.config.starterdb.type=GENERAL_PURPOSE
-oracle.install.db.config.starterdb.globalDBName=VTABOL
-oracle.install.db.config.starterdb.SID=ORCL
+oracle.install.db.config.starterdb.globalDBName=<%= @dbname %>
+oracle.install.db.config.starterdb.SID=<%= @sid %>
 oracle.install.db.config.starterdb.characterSet=AL32UTF8
 oracle.install.db.config.starterdb.memoryOption=false
-oracle.install.db.config.starterdb.memoryLimit=
 oracle.install.db.config.starterdb.installExampleSchemas=false
 oracle.install.db.config.starterdb.enableSecuritySettings=true
-oracle.install.db.config.starterdb.password.ALL=vtax05
-oracle.install.db.config.starterdb.password.SYS=vtax05
-oracle.install.db.config.starterdb.password.SYSTEM=vtax05
-oracle.install.db.config.starterdb.password.SYSMAN=vtax05
-oracle.install.db.config.starterdb.password.DBSNMP=vtax05
+oracle.install.db.config.starterdb.password.ALL=<%= @systempass %>
+oracle.install.db.config.starterdb.password.SYS=<%= @systempass %>
+oracle.install.db.config.starterdb.password.SYSTEM=<%= @systempass %>
+oracle.install.db.config.starterdb.password.SYSMAN=<%= @systempass %>
+oracle.install.db.config.starterdb.password.DBSNMP=<%= @systempass %>
 oracle.install.db.config.starterdb.control=DB_CONTROL
-oracle.install.db.config.starterdb.gridcontrol.gridControlServiceURL=
 oracle.install.db.config.starterdb.dbcontrol.enableEmailNotification=false
-oracle.install.db.config.starterdb.dbcontrol.emailAddress=
-oracle.install.db.config.starterdb.dbcontrol.SMTPServer=
 oracle.install.db.config.starterdb.automatedBackup.enable=false
-oracle.install.db.config.starterdb.automatedBackup.osuid=
-oracle.install.db.config.starterdb.automatedBackup.ospwd=
-oracle.install.db.config.starterdb.storageType=
-oracle.install.db.config.starterdb.fileSystemStorage.dataLocation=
-oracle.install.db.config.starterdb.fileSystemStorage.recoveryLocation=
-oracle.install.db.config.asm.diskGroup=
-oracle.install.db.config.asm.ASMSNMPPassword=
-
-MYORACLESUPPORT_USERNAME=
-MYORACLESUPPORT_PASSWORD=
 
 SECURITY_UPDATES_VIA_MYORACLESUPPORT=false
 DECLINE_SECURITY_UPDATES=true
-
-PROXY_HOST=
-PROXY_PORT=
-PROXY_USER=
-PROXY_PWD=

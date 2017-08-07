@@ -3,16 +3,16 @@
 #-----------------------------------------------------------------------------
 [GENERAL]
 
-RESPONSEFILE_VERSION = "11.2.0"
+RESPONSEFILE_VERSION = <%= @oracleVersion %>
 OPERATION_TYPE = "createDatabase"
 
 [CREATEDATABASE]
 
-GDBNAME = "VTABOL"
-SID = "ORCL"
+GDBNAME = <%= @dbname %>
+SID = <%= @sid %>
 TEMPLATENAME = "General_Purpose.dbc"
-SYSPASSWORD = "vtax05"
-SYSTEMPASSWORD = "vtax05"
+SYSPASSWORD = <%= @systempass %>
+SYSTEMPASSWORD = <%= @systempass %>
 DISABLESECURITYCONFIGURATION = "ALL"
 CHARACTERSET = "AL32UTF8"
 NATIONALCHARACTERSET= "UTF8"

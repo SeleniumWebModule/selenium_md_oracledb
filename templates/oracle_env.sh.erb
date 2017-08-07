@@ -1,8 +1,8 @@
 #oracle init steps to database
 
-export ORACLE_SID=ORCL
+export ORACLE_SID=<%= @sid %>
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
-export ORACLE_HOME=/opt/oradb/u01/app/oracle/product/11.2.0/dbhome_1
+export ORACLE_HOME=<%= @oracleHome %>
 export TNS_ADMIN=$ORACLE_HOME/network/admin
 
 export PATH=$ORACLE_HOME/bin:$PATH
