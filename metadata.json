@@ -10,8 +10,13 @@
   "dependencies": [
                     {"name":"erwbgy/limits","version_requirement":">=0.3.1"},
                     {"name":"petems/swap_file","version_requirement":">=4.0.0"},
-                    {"name":"fiddyspence/sysctl","version_requirement":">=1.1.0"},
+                    {"name":"fiddyspence/sysctl","version_requirement":">=1.1.0"}
                   ],
-  "data_provider": null
+  "operatingsystem_support": [{
+    "operatingsystem": "CentOS",
+    "operatingsystemrelease": [
+      "7"
+    ]
+  }],
 }
 
