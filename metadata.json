@@ -1,7 +1,7 @@
 {
   "name": "rjconsultores-selenium_md_oracledb",
   "version": "0.0.1",
-  "author": "rjconsultores",
+  "author": "eduardodicarte",
   "summary": "Módulo para provisionamento da instalação e confiração do banco de dados",
   "license": "Apache-2.0",
   "source": "https://github.com/SeleniumWebModule/seleniummdoracledb",
@@ -17,6 +17,6 @@
     "operatingsystemrelease": [
       "7"
     ]
-  }],
+  }]
 }
 
