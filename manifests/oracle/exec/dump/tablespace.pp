@@ -12,7 +12,7 @@ class selenium_md_oracledb::oracle::exec::dump::tablespace {
 		content => template("selenium_md_oracledb/tablespace.sql.erb"),
 	} ->
 
-	exec {'table_space':
+	exec {'create_tablespace':
 		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @tablespace.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",

@@ -1,0 +1,27 @@
+--------------------------------------------------------
+--  DDL for Type REPORT_TEMPLATE
+--------------------------------------------------------
+
+CREATE OR REPLACE TYPE "<%= @userdb %>"."REPORT_TEMPLATE" AS OBJECT (reportType                 INTEGER, useDescriptionInfo          INTEGER, useQuantitativeInfo         INTEGER, useDiagrams                 INTEGER, useTableColumns             INTEGER, useTableColumnsComments     INTEGER, useTableIndexes             INTEGER, useTableConstraints         INTEGER, useTableFKReferringTo       INTEGER, useTableFKReferredFrom      INTEGER, useEntityAttributes         INTEGER, useEntityAttributesComments INTEGER, useEntityConstraints        INTEGER, useEntityIdentifiers        INTEGER, useEntityRelationships      INTEGER, useEntityIncomingProcesses  INTEGER, useEntityOutgoingProcesses  INTEGER, useDomainConstraints        INTEGER, useDomainUsedInTables       INTEGER, useDomainUsedInEntities     INTEGER, useSTAttributes             INTEGER, useSTAttributesComments     INTEGER, useSTMethods                INTEGER, useSTUsedInTables           INTEGER, useSTUsedInEntities         INTEGER, useCTUsedInTables           INTEGER, useCTUsedInEntities         INTEGER, useDTUsedInTables           INTEGER, useDTUsedInEntities         INTEGER, useCRImpactedObjects        INTEGER, useMRImpactedObjects        INTEGER)
+
+/
+--------------------------------------------------------
+--  DDL for Type SYSTPNDuAhgLSkn3gUAB/AQB29w==
+--------------------------------------------------------
+
+CREATE OR REPLACE TYPE "<%= @userdb %>"."SYSTPNDuAhgLSkn3gUAB/AQB29w==" AS TABLE OF "SYS"."SQL_BIND"
+
+/
+
+GRANT EXECUTE ON "<%= @userdb %>"."SYSTPNDuAhgLSkn3gUAB/AQB29w==" TO PUBLIC;
+--------------------------------------------------------
+--  DDL for Type SYSTPVfKR1MnhgrDgUAB/AQAoiA==
+--------------------------------------------------------
+
+CREATE OR REPLACE TYPE "<%= @userdb %>"."SYSTPVfKR1MnhgrDgUAB/AQAoiA==" AS TABLE OF "SYS"."SQL_BIND"
+
+/
+
+GRANT EXECUTE ON "<%= @userdb %>"."SYSTPVfKR1MnhgrDgUAB/AQAoiA==" TO PUBLIC;
+
+exit
