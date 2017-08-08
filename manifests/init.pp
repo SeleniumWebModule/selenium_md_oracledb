@@ -47,25 +47,17 @@
 #
 # Copyright 2017 Eduardo Dicarte.
 #
-class selenium_md_oracledb (
-		$oracleBaseName="u01",
-		$oracleVersion="11.2.0",
-		$pathName="dbhome_1", 
-		$dbname="VTABOL", 
-		$systempass="vtax05",
-		$sid="ORCL",
-		$portdb="1521"
-	) {
+class selenium_md_oracledb ($oracleBaseName, $oracleVersion, $pathName, $dbname, $systempass, $sid,
+		$portdb, $userdb, $passdb) {
 	
 		$oracleBase = "/opt/oradb/${oracleBaseName}"
 		$oracleBaseApp = "${oracleBase}/app/oracle"
 		$oracleHome = "${oracleBaseApp}/product/${oracleVersion}/${pathName}"
 		$systemusr = "system"
-
-		notice ($oracleBase)
 			
 		include selenium_md_oracledb::kernel::init		
 		
 		include selenium_md_oracledb::oracle::exec::environment_variables
 		include selenium_md_oracledb::oracle::configure::init
+		include selenium_md_oracledb::oracle::exec::dump::init
  }
