@@ -1,4 +1,5 @@
 class selenium_md_oracledb::oracle::configure::service {
+	require selenium_md_oracledb::oracle::configure::database
 
 	$dbname = $selenium_md_oracledb::dbname
 	$oracleHome = $selenium_md_oracledb::oracleHome

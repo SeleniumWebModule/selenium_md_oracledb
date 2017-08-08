@@ -6,7 +6,6 @@ class selenium_md_oracledb::oracle::configure::network {
 
   $portdb = $selenium_md_oracledb::portdb
   
-	
 	file {'netca.rsp':
     	ensure  => file,
     	path    => $path_netca,
