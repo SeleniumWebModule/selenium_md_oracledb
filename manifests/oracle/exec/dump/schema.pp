@@ -5,14 +5,6 @@ class selenium_md_oracledb::oracle::exec::dump::schema {
 	$userdb = $selenium_md_oracledb::userdb
 	$passdb = $selenium_md_oracledb::passdb
 
-	exec {'init_database_for_dump':
-		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @startup.sql",
-		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
-		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
-		user        => 'oracle',
-		environment => "ORACLE_HOME=${selenium_md_oracledb::oracleHome}"
-	} -> 
-
 	file {'schema':
 		ensure => file,
 		path   => "${selenium_md_oracledb::oracleHome}/scripts/schema.sql",
@@ -27,6 +19,6 @@ class selenium_md_oracledb::oracle::exec::dump::schema {
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
 		user        => 'oracle',
-		environment => "ORACLE_HOME=${selenium_md_oracledb::oracleHome}"
+		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"]
 	} 
 }
