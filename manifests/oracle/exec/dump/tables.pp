@@ -9,7 +9,7 @@ class selenium_md_oracledb::oracle::exec::dump::tables {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/tables.sql.erb"),
+		content => template("selenium_md_oracledb/dump/sql/tables.sql.erb"),
 	} ->
 
 	exec {'create_tables':

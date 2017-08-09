@@ -11,7 +11,7 @@ class selenium_md_oracledb::oracle::exec::dump::schema {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/schema.sql.erb"),
+		content => template("selenium_md_oracledb/dump/sql/schema.sql.erb"),
 	} ->
 
 	exec {'create_schema':

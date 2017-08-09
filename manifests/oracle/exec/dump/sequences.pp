@@ -9,7 +9,7 @@ class selenium_md_oracledb::oracle::exec::dump::sequences {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/sequences.sql.erb"),
+		content => template("selenium_md_oracledb/dump/sql/sequences.sql.erb"),
 	} ->
 
 	exec {'create_sequences':
@@ -17,6 +17,7 @@ class selenium_md_oracledb::oracle::exec::dump::sequences {
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
 		user        => 'oracle',
-		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"]
+		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"],
+		timeout     => 0
 	} 
 }

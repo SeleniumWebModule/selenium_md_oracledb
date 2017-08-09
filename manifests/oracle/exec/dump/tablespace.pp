@@ -9,7 +9,7 @@ class selenium_md_oracledb::oracle::exec::dump::tablespace {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/tablespace.sql.erb"),
+		content => template("selenium_md_oracledb/dump/sql/tablespace.sql.erb"),
 	} ->
 
 	exec {'create_tablespace':
