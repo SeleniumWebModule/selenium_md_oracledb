@@ -1,0 +1,499 @@
+--------------------------------------------------------
+--  DDL for Procedure CRT_SEQUENCE_EMPRESA
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."CRT_SEQUENCE_EMPRESA" 
+(
+PEMPRESA IN VARCHAR2  
+)AS 
+
+nsecname varchar2(200);
+osecname varchar2(200);
+l_current number := 0;
+
+BEGIN
+  
+  FOR seq IN (select * 
+              from 
+                all_sequences 
+              where 
+                sequence_owner = '<%= @userdb %>'
+                AND sequence_name like 'FOLIO_SISTEMA%'
+              order by 2 ) LOOP
+  
+    execute immediate
+    'select ' || seq.sequence_name|| '.nextval from dual' INTO l_current;
+    
+    
+    --DBMS_OUTPUT.PUT_LINE(seq.sequence_name);  
+    nsecname := SUBSTR(seq.sequence_name,0,LENGTH(seq.sequence_name)-3) || PEMPRESA || '_SEQ';
+    --DBMS_OUTPUT.PUT_LINE(nsecname);  
+    
+    --execute immediate
+    DBMS_OUTPUT.PUT_LINE('CREATE SEQUENCE <%= @userdb %>.' || nsecname || ' MINVALUE 1 MAXVALUE 9999999999999999999999999999 INCREMENT BY 1 START WITH '|| l_current || ' NOCACHE  ORDER  NOCYCLE ;');
+    
+    --execute immediate
+    --  'CREATE SEQUENCE <%= @userdb %>.' || nsecname || ' MINVALUE 1 MAXVALUE 9999999999999999999999999999 INCREMENT BY 1 START WITH '|| seq.last_number || ' NOCACHE  ORDER  NOCYCLE';
+    
+    --osecname := seq.sequence_name || '_OLD';
+   -- execute immediate
+    --DBMS_OUTPUT.PUT_LINE('RENAME ' || seq.sequence_name || ' TO ' || osecname||';' );
+
+  END LOOP;
+END CRT_SEQUENCE_EMPRESA;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure GERA_ABASTO_BOLETO
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."GERA_ABASTO_BOLETO" (
+ID_ESTACION IN NUMBER, 
+ID_PUNTOVENTA IN NUMBER, 
+ID_CLASIFICACION IN NUMBER, 
+ID_ARTICULO IN NUMBER,
+ID_REQUISICIONBOLETO IN NUMBER,
+IDUSUARIO IN NUMBER,
+IDEMPRESA IN NUMBER,
+ID_ABASTOBOLETO OUT NUMBER)
+ AS
+BEGIN
+ INSERT INTO ABASTO_BOLETO(
+		ESTACION_ID,
+		PUNTOVENTACENTRAL_ID,
+		PUNTOVENTA_ID,
+		CLASIFICACION_ID,
+		ARTICULO_ID,
+		NUMSERVIDOR,
+		STATUSENVIO,
+		NUMREQUISICION,
+		FECHORREQ,
+		USUARIOREQ_ID,
+		CANTFAJILLA,
+		FECHORGENERACION,
+		USUARIOGENERACION_ID,
+		STATUSFIRMA,
+		FECHORFIRMA,
+		ACTIVO,
+		FECMODIF,
+		USUARIO_ID,
+		EMPRESA_ID, 
+		ABASTOBOLETO_ID
+	)
+  VALUES
+	(
+		ID_ESTACION,
+		ID_PUNTOVENTA,
+		ID_PUNTOVENTA,
+		ID_CLASIFICACION,
+		ID_ARTICULO,
+		1,
+		1,
+		ID_REQUISICIONBOLETO,
+		SYSDATE,
+		IDUSUARIO,
+		1,
+		SYSDATE,
+		IDUSUARIO,
+		2,
+		SYSDATE,
+		1,
+		SYSDATE,
+		IDUSUARIO,
+		IDEMPRESA,
+		ABASTO_BOLETO_SEQ.nextval
+	); 
+  ID_ABASTOBOLETO:=ABASTO_BOLETO_SEQ.CURRVAL;
+END;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure GERA_DET_ABASTO_BOLETO
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."GERA_DET_ABASTO_BOLETO" (
+ID_ABASTOBOLETO IN NUMBER, 
+VL_NUMSERIEPREIMPRESA IN VARCHAR, 
+STATUS_FIRMA IN NUMBER DEFAULT '1', 
+ID_USUARIO IN NUMBER
+)
+AS
+BEGIN
+INSERT INTO DET_ABASTO_BOLETO(
+	ABASTOBOLETO_ID, 
+	NUMMOVIMIENTO,
+	NUMSERIEPREIMPRESA,
+	NUMFOLIOINICIAL, 
+	NUMFOLIOFINAL, 
+	STATUSFIRMA, 
+	STATUSOPERACION, 
+	ACTIVO, 
+	INDINUTILIZA,
+	FECMODIF,
+	USUARIO_ID,
+	STATUSENVIO,
+	DETABASTOBOLETO_ID
+)
+VALUES
+	(ID_ABASTOBOLETO, NUMMOVIMIENTO_SEQ.nextval, VL_NUMSERIEPREIMPRESA, 1, 999999, STATUS_FIRMA, 0, 1, 0, SYSDATE, ID_USUARIO, 1, DET_ABASTO_BOLETO_SEQ.nextval);
+END;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure GERA_ESTOQUE
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."GERA_ESTOQUE" (
+	ID_EMPRESA IN NUMBER DEFAULT '0',
+	ID_USUARIO IN NUMBER DEFAULT '0'
+)AS 
+SERIE VARCHAR(50); 
+ISDETBOLETO INTEGER;
+ID_ABASTOBOLETO NUMBER;
+ID_REQUISICIONBOLETO NUMBER;
+CURSOR C1 IS SELECT
+	PUNTO_VENTA.PUNTOVENTA_ID,
+	PUNTO_VENTA.EMPRESA_ID,
+	ESTACION.ESTACION_ID,
+  ARTICULO.ARTICULO_ID,
+	CLASIFICACION.CLASIFICACION_ID
+FROM
+	<%= @userdb %>.PUNTO_VENTA
+JOIN <%= @userdb %>.EMPRESA ON(
+	PUNTO_VENTA.EMPRESA_ID = EMPRESA.EMPRESA_ID
+)
+JOIN <%= @userdb %>.ESTACION ON(
+	PUNTO_VENTA.PUNTOVENTA_ID = ESTACION.PUNTOVENTA_ID
+)
+JOIN <%= @userdb %>.ARTICULO ON(
+	ARTICULO.DESCARTICULO LIKE '%VENDA MANUAL%'
+)
+JOIN <%= @userdb %>.CLASIFICACION ON(
+ARTICULO.ARTICULO_ID=CLASIFICACION.ARTICULO_ID
+)
+WHERE 
+	EMPRESA.EMPRESA_ID = ID_EMPRESA ;
+BEGIN
+	FOR R1 IN C1 LOOP 
+	SERIE := 'M' || R1.ESTACION_ID;
+SELECT COUNT(*) INTO ISDETBOLETO FROM DET_ABASTO_BOLETO WHERE DET_ABASTO_BOLETO.NUMSERIEPREIMPRESA = SERIE;
+IF ISDETBOLETO < 1 THEN
+  GERA_RQEUISICION_BOLETO(R1.ESTACION_ID, R1.PUNTOVENTA_ID, R1.CLASIFICACION_ID, R1.ARTICULO_ID, ID_EMPRESA, ID_USUARIO, ID_REQUISICIONBOLETO );
+  GERA_ABASTO_BOLETO(R1.ESTACION_ID, R1.PUNTOVENTA_ID, R1.CLASIFICACION_ID, R1.ARTICULO_ID,ID_REQUISICIONBOLETO, ID_USUARIO, ID_EMPRESA, ID_ABASTOBOLETO); 
+  GERA_DET_ABASTO_BOLETO(ID_ABASTOBOLETO, SERIE, 2, ID_USUARIO);
+END IF;
+NULL ;
+END LOOP ; EXCEPTION
+WHEN NO_DATA_FOUND THEN
+	NULL ; 
+END ;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure GERA_RQEUISICION_BOLETO
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."GERA_RQEUISICION_BOLETO" (
+ID_ESTACION IN NUMBER, 
+ID_PUNTOVENTA IN NUMBER, 
+ID_CLASIFICACION IN NUMBER,
+ID_ARTICULO IN NUMBER, 
+ID_EMPRESA IN NUMBER, 
+ID_USUARIO IN NUMBER,
+ID_REQUISICIONBOLETO OUT NUMBER )
+AS
+BEGIN
+	 INSERT INTO REQUISICION_BOLETO(
+				ESTACION_ID,/*parametro*/
+				PUNTOVENTA_ID, /*parametro*/
+				CLASIFICACION_ID, /*parametro*/
+				ARTICULO_ID, /*parametro*/
+				CANTFAJILLA, /*parametro*/
+				STATUSENVIO, /*0*/
+				EMPRESA_ID, /*parametro*/
+				ACTIVO, /*1*/
+				FECMODIF,/*sysdate*/
+				USUARIO_ID,/*parametro*/
+				REQUISICIONBOLETO_ID/*nextval*/
+			)
+			VALUES(
+				ID_ESTACION,
+				ID_PUNTOVENTA,
+				ID_CLASIFICACION,
+				ID_ARTICULO,
+				1,
+				0,
+				ID_EMPRESA,
+				1,
+				SYSDATE,
+				ID_USUARIO,
+				REQUISICION_BOLETO_SEQ.nextval
+		);
+ID_REQUISICIONBOLETO:= REQUISICION_BOLETO_SEQ.CURRVAL;
+END;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure LIMPIAR_BASE
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."LIMPIAR_BASE" (nomeSchema IN VARCHAR2) AS 
+  nomeSequence varchar2(50);
+  nomeColumaId varchar2(30);
+  cantSequence integer;
+BEGIN
+    DELETE FROM TMP_BORRAR;
+    COMMIT;
+    dbms_output.enable(null);
+   
+    limpiar_tabla('RUTA',1,null,nomeSchema);
+    
+    FOR T IN (SELECT tabla FROM TMP_BORRAR) LOOP
+      BEGIN
+        SELECT cols.column_name INTO nomeColumaId
+        FROM all_constraints cons, all_cons_columns cols
+        WHERE cols.table_name = T.tabla
+        AND cons.constraint_type = 'P'
+        AND cons.constraint_name = cols.constraint_name
+        AND cons.owner = cols.owner
+        and cons.owner = nomeSchema
+        AND ROWNUM < 2;
+      EXCEPTION
+        WHEN no_data_found 
+        THEN
+          nomeColumaId:=NULL;
+      END;
+      
+      IF nomeColumaId IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('DELETE FROM ' || T.tabla || ' WHERE ' || nomeColumaId || ' <> -1 ;');
+      ELSE
+        DBMS_OUTPUT.PUT_LINE('DELETE FROM ' || T.tabla || ';');
+      END IF;
+      nomeSequence := T.tabla || '_SEQ';
+      SELECT count(*) into cantSequence FROM all_sequences WHERE sequence_owner = nomeSchema AND sequence_name = nomeSequence;
+      
+      --IF cantsequence > 0 THEN
+          --DBMS_OUTPUT.PUT_LINE('DROP SEQUENCE ' || nomeSequence || ';');  
+          --DBMS_OUTPUT.PUT_LINE('CREATE SEQUENCE ' || nomeSequence || ';');  
+     -- END IF;
+    END LOOP;
+    
+END LIMPIAR_BASE;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure LIMPIAR_TABLA
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."LIMPIAR_TABLA" 
+(
+  PNOMETABLA IN VARCHAR2  
+, CANTIDENTAR IN INTEGER  
+, STRPATHTABLAS IN VARCHAR2  
+, NOMESCHEMA IN VARCHAR2  
+) AS ultimoHijo BOOLEAN;  
+
+  strIdentar varchar2(550);
+  cantTabla INTEGER;
+BEGIN
+  strIdentar :=rpad('.',cantIdentar,'.');
+  
+  DBMS_OUTPUT.PUT_LINE(strIdentar || 'Limpiando tabla:' || pnometabla);
+  
+  SELECT COUNT(*) INTO cantTabla FROM tmp_borrar where tabla=pnometabla;
+  
+  IF cantTabla > 0 THEN
+    DBMS_OUTPUT.PUT_LINE(strIdentar ||'Tabla ya borrada');
+    
+    RETURN;
+  END IF;
+
+  ultimoHijo := true;
+  
+  FOR t IN (SELECT DISTINCT table_name FROM all_constraints WHERE r_constraint_name IN (SELECT constraint_name FROM all_constraints WHERE table_name= UPPER(pnometabla) and owner = nomeSchema) ) LOOP
+  
+    ultimoHijo := false;
+    
+    IF INSTR(strPathTablas,t.table_name) > 0 THEN
+      INSERT INTO TMP_BORRAR (tabla) values (pnometabla);
+      COMMIT;
+      DBMS_OUTPUT.PUT_LINE(strIdentar || 'Apagando Redundancia:' || t.table_name);  
+    ELSE
+      DBMS_OUTPUT.PUT_LINE(strIdentar || 'Hijo:' || t.table_name);
+      LIMPIAR_TABLA(t.table_name,cantidentar+1,coalesce(strPathTablas,'') || ',' || pnometabla,nomeSchema);
+    END IF;
+    
+    
+  END LOOP;
+  
+  IF ultimoHijo = TRUE THEN
+    INSERT INTO TMP_BORRAR (tabla) values (pnometabla);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE(strIdentar || 'Apagando Hijo:' || pnometabla);
+  ELSE
+    INSERT INTO TMP_BORRAR (tabla) values (pnometabla);
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE(strIdentar || 'Apagando Pai:' || pnometabla);
+  END IF;
+END LIMPIAR_TABLA;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure REPLICA_BOLREQ_ALL_ESTACION
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."REPLICA_BOLREQ_ALL_ESTACION" (ID_REQ_BOL IN NUMBER DEFAULT '0')
+AS
+SERIE VARCHAR(50);
+CURSOR C1 IS SELECT 
+	ESTACION.ESTACION_ID,
+	REQUISICION_BOLETO.PUNTOVENTA_ID,
+	REQUISICION_BOLETO.CLASIFICACION_ID,
+	REQUISICION_BOLETO.ARTICULO_ID,
+	REQUISICION_BOLETO.CANTFAJILLA,
+	REQUISICION_BOLETO.STATUSENVIO,
+	REQUISICION_BOLETO.EMPRESA_ID,
+	REQUISICION_BOLETO.ACTIVO,
+	REQUISICION_BOLETO.FECMODIF,
+	REQUISICION_BOLETO.USUARIO_ID,
+	REQUISICION_BOLETO.REQUISICIONBOLETO_ID
+FROM
+	<%= @userdb %>.REQUISICION_BOLETO
+JOIN <%= @userdb %>.ESTACION ON(
+	REQUISICION_BOLETO.PUNTOVENTA_ID = ESTACION.PUNTOVENTA_ID
+)
+WHERE
+	REQUISICION_BOLETO.ESTACION_ID <> ESTACION.ESTACION_ID
+AND REQUISICION_BOLETO.REQUISICIONBOLETO_ID = ID_REQ_BOL;
+	BEGIN
+		FOR R1 IN C1 LOOP 
+SERIE := 'M' ||R1.ESTACION_ID;
+	 INSERT INTO REQUISICION_BOLETO(
+				ESTACION_ID,
+				PUNTOVENTA_ID,
+				CLASIFICACION_ID,
+				ARTICULO_ID,
+				CANTFAJILLA,
+				STATUSENVIO,
+				EMPRESA_ID,
+				ACTIVO,
+				FECMODIF,
+				USUARIO_ID,
+				REQUISICIONBOLETO_ID
+			)
+			VALUES(
+				R1.ESTACION_ID,
+				R1.PUNTOVENTA_ID,
+				R1.CLASIFICACION_ID,
+				R1.ARTICULO_ID,
+				R1.CANTFAJILLA,
+				R1.STATUSENVIO,
+				R1.EMPRESA_ID,
+				R1.ACTIVO,
+				R1.FECMODIF,
+				R1.USUARIO_ID,
+				REQUISICION_BOLETO_SEQ.nextval
+		);
+  /*DBMS_OUTPUT.PUT_LINE('Estacao: ' || R1.ESTACION_ID || '   Empresa: ' || R1.EMPRESA_ID ); */
+	NULL ;
+	END LOOP ; EXCEPTION
+	WHEN NO_DATA_FOUND THEN
+		NULL ;
+	-- routine body goes here, e.g.
+	-- DBMS_OUTPUT.PUT_LINE('Navicat for Oracle');
+END;
+
+/
+--------------------------------------------------------
+--  DDL for Procedure RESET_ALL_SEQUENCES
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."RESET_ALL_SEQUENCES" 
+
+AS
+BEGIN
+  Reset_Sequence_to_Data( 'PARADA', 'PARADA_ID' );
+  Reset_Sequence_to_Data( 'CIUDAD', 'CIUDAD_ID' );
+  Reset_Sequence_to_Data( 'ESTADO', 'ESTADO_ID' );
+
+END;
+
+/
+
+  GRANT EXECUTE, DEBUG ON "<%= @userdb %>"."RESET_ALL_SEQUENCES" TO "<%= @userdb %>_TRC";
+--------------------------------------------------------
+--  DDL for Procedure RESET_SEQUENCE
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."RESET_SEQUENCE" 
+(p_seq_name IN VARCHAR2, p_val IN number)
+AS
+ l_current number := 0;
+  l_difference number := 0;
+  l_minvalue user_sequences.min_value%type := 0;
+
+begin
+
+  select min_value
+  into l_minvalue
+  from user_sequences
+  where sequence_name = p_seq_name;
+
+  execute immediate
+  'select ' || p_seq_name || '.nextval from dual' INTO l_current;
+
+  if p_Val < l_minvalue then
+    l_difference := l_minvalue - l_current;
+  else
+    l_difference := p_Val - l_current;
+  end if;
+
+  if l_difference = 0 then
+    return;
+  end if;
+
+  execute immediate
+    'alter sequence ' || p_seq_name || ' increment by ' || l_difference ||
+       ' minvalue ' || l_minvalue;
+
+  execute immediate
+    'select ' || p_seq_name || '.nextval from dual' INTO l_difference;
+
+  execute immediate
+    'alter sequence ' || p_seq_name || ' increment by 1 minvalue ' || l_minvalue;
+end;
+
+/
+
+  GRANT EXECUTE, DEBUG ON "<%= @userdb %>"."RESET_SEQUENCE" TO "<%= @userdb %>_TRC";
+--------------------------------------------------------
+--  DDL for Procedure RESET_SEQUENCE_TO_DATA
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "<%= @userdb %>"."RESET_SEQUENCE_TO_DATA" 
+(p_TableName IN VARCHAR2, p_FieldName IN VARCHAR2)
+AS
+l_MaxUsed NUMBER;
+BEGIN
+
+
+  execute immediate 'select coalesce(max(' || p_FieldName || '),0) from '|| p_TableName into l_MaxUsed;
+
+  Reset_Sequence( p_TableName || '_SEQ', l_MaxUsed );
+
+END;
+
+/
+
+  GRANT EXECUTE, DEBUG ON "<%= @userdb %>"."RESET_SEQUENCE_TO_DATA" TO "<%= @userdb %>_TRC";

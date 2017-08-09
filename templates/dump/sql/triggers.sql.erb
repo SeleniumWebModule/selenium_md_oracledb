@@ -1,0 +1,1659 @@
+--------------------------------------------------------
+--  DDL for Trigger TG_GERA_ESTOQUE
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TG_GERA_ESTOQUE" AFTER INSERT ON "<%= @userdb %>"."ESTACION" REFERENCING OLD AS "OLD" NEW AS "NEW" DECLARE
+    USUARIOID CONSTANT NUMBER := 7089;
+    EMPRESAID CONSTANT NUMBER := 10;
+BEGIN
+  GERA_ESTOQUE(EMPRESAID, USUARIOID);
+EXCEPTION
+      WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE ('Fracaso TRIGGER TG_GERA_ESTOQUE');
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TG_GERA_ESTOQUE" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_CLASE_SERVICIO_INTEG_TOVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_CLASE_SERVICIO_INTEG_TOVS" 
+BEFORE INSERT OR UPDATE OF 
+"CLASESERVICIO_ID",
+"DESCCLASE"
+
+ON "CLASE_SERVICIO" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_CLASE_SERVICIO_INTEG_TOVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_DEL_DISPONIBILIDAD_BOLETO
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_DEL_DISPONIBILIDAD_BOLETO" 
+BEFORE DELETE ON BOLETO 
+REFERENCING OLD AS OLD NEW AS NEW 
+FOR EACH ROW
+DECLARE
+    constActivo CONSTANT NUMBER := 1;
+    constCerrada CONSTANT NUMBER := 2;
+    constStatusAsiento CONSTANT NUMBER := 1;
+    
+    varSecOrigen   <%= @userdb %>.CORRIDA_TRAMO.NUMSECORIGEN%TYPE;
+    varSecDestino  <%= @userdb %>.CORRIDA_TRAMO.NUMSECDESTINO%TYPE;
+BEGIN
+    IF :OLD.FECCORRIDA IS NULL OR :OLD.CORRIDA_ID IS NULL OR :OLD.ORIGEN_ID IS NULL OR :OLD.DESTINO_ID IS NULL OR :OLD.NUMASIENTO IS NULL THEN
+      RETURN;
+    END IF;
+    
+    SELECT
+      tc1.NUMSECORIGEN,tc2.NUMSECDESTINO
+    INTO
+      varSecOrigen,varSecDestino
+    FROM
+      <%= @userdb %>.CORRIDA_TRAMO tc1, <%= @userdb %>.CORRIDA_TRAMO tc2
+    WHERE
+      tc1.feccorrida = :OLD.FECCORRIDA AND
+      tc1.corrida_id = :OLD.CORRIDA_ID AND
+      tc2.feccorrida = tc1.feccorrida AND
+      tc2.corrida_id = tc1.corrida_id AND
+      tc1.origen_id = :OLD.ORIGEN_ID AND
+      tc2.destino_id = :OLD.DESTINO_ID AND
+      tc1.activo in (constActivo,constCerrada) AND
+      tc2.activo in (constActivo,constCerrada);
+            
+    DELETE
+    FROM
+      <%= @userdb %>.DISPONIBILIDAD
+    WHERE
+      corrida_id = :OLD.CORRIDA_ID AND
+      fecCorrida = :OLD.FECCORRIDA AND
+      secOrigen = varSecOrigen AND
+      secDestino = varSecDestino AND
+      numAsiento = :OLD.NUMASIENTO AND
+      activo = constActivo AND
+      statusAsiento = constStatusAsiento;    
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_DEL_DISPONIBILIDAD_BOLETO" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_ORGAO_CONCEDENTE_INTEG_TOVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_ORGAO_CONCEDENTE_INTEG_TOVS" 
+BEFORE INSERT OR UPDATE OF 
+"ORGAOCONCEDENTE_ID",
+"DESCORGAO"
+
+
+ON "ORGAO_CONCEDENTE" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_ORGAO_CONCEDENTE_INTEG_TOVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_EMPRESA_IMPOSTO
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_EMPRESA_IMPOSTO" 
+  before insert or update on <%= @userdb %>.EMPRESA_IMPOSTO
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    info varchar(32);
+  begin
+    if INSERTING or UPDATING then
+        info := to_char(nvl(:NEW.icms, 0));
+        
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        if user <> '<%= @userdb %>' then
+          :NEW.hashp2bd := info;
+        else
+          :NEW.hashp2vta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashp2bd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_EMPRESA_IMPOSTO" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_A2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_A2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_A2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    pv_id number;
+    
+    datamov varchar(8);
+    meioPagamento varchar(25);
+    tipoDocumento varchar(1);
+    valor varchar(12);
+    
+    info varchar(48);
+  begin
+    pv_id := 0;
+  
+    IF DELETING THEN 
+      pv_id := :OLD.puntoventa_id;
+    ELSIF INSERTING THEN
+      pv_id := :NEW.puntoventa_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = pv_id;
+    end if;
+    
+    if INSERTING or UPDATING then
+        datamov := nvl(:NEW.datamov, '');
+        meioPagamento := nvl(:NEW.meioPagamento, '');
+        tipoDocumento := nvl(:NEW.tipoDoc, '');
+        valor := nvl(:NEW.valor, '');
+        
+        info := datamov || meioPagamento || tipoDocumento || valor;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        if user <> '<%= @userdb %>' then
+          :NEW.hashbd := info;
+        else
+          :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_A2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_DADOS_SISTEMA
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_DADOS_SISTEMA" 
+  before update on FISCAL_DADOS_SISTEMA
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    cnpjRJ varchar(14);
+    ieRJ varchar(14);
+    imRJ varchar(14);
+    razaosocialRJ varchar(50);
+    nomePafEcf varchar(50);
+    versaoPafEcf varchar(50);
+    
+    infoR1 varchar(192);
+    infoF2 varchar(32);
+  begin
+    if UPDATING then
+        cnpjRJ := nvl(:NEW.numcnpj, '');
+        ieRJ := nvl(:NEW.numinsestadual, '');
+        imRJ := nvl(:NEW.numinsmunicipal, '');
+        razaosocialRJ := nvl(:NEW.razaosocial, '');
+        nomePafEcf := nvl(:NEW.nomsistema, '');
+        versaoPafEcf := nvl(:NEW.numversao, '');
+        
+        infoR1 := cnpjRJ || ieRJ || imRJ || razaosocialRJ || nomePafEcf || versaoPafEcf;
+        infoR1 := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infoR1, 'AL32UTF8'), 2);
+
+        infoF2 := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (cnpjRJ, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+              :NEW.hashr1bd := infoR1;
+              :NEW.hashf2bd := infoF2;
+        else
+            :NEW.hashr1vta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || infoR1, 'AL32UTF8'), 2);
+            :NEW.hashr1bd := infoR1;
+
+            :NEW.hashf2vta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || infoF2, 'AL32UTF8'), 2);
+            :NEW.hashf2bd := infoF2;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_DADOS_SISTEMA" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_F2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_F2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_F2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    cnpjOrgaoConcedente	varchar(18);
+    codigoLocalEmissao varchar(22);
+    identificacaoLinha	varchar(10);
+    descricaoLinha varchar(60);
+    dataPartida	varchar(8);
+    horaPartida	varchar(6);
+    codigoTipoViagem varchar(2);
+    
+    info varchar(126);
+  begin
+    IF DELETING or INSERTING THEN 
+        if user <> '<%= @userdb %>' then
+            update punto_venta p set p.pafinvalido = 1;
+        end if;
+    END IF;
+    
+    if INSERTING or UPDATING then
+        cnpjOrgaoConcedente := nvl(:NEW.cnpj, '');
+        codigoLocalEmissao := nvl(:NEW.codigo_local_emissao, '');
+        identificacaoLinha := nvl(:NEW.identificacao_linha, '');
+        descricaoLinha := nvl(:NEW.descricao_linha, '');
+        dataPartida := nvl(:NEW.data_partida, '');
+        horaPartida := nvl(:NEW.hora_partida, '');
+        codigoTipoViagem := nvl(:NEW.codigo_tipo_viagem, '');
+        
+        info := cnpjOrgaoConcedente || codigoLocalEmissao || identificacaoLinha || descricaoLinha || dataPartida || horaPartida || codigoTipoViagem;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        if user <> '<%= @userdb %>' then
+          :NEW.hashbd := info;
+        else
+          :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_F2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_F3
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_F3" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_F3
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numSerie20 varchar(20);
+    mfAdicional varchar(20);
+    modelo varchar(20);
+    numeroUsuario varchar(2);
+    ccf varchar(6);
+    coo varchar(6);
+    codOrigem varchar(20);
+    codDestino varchar(20);
+    valorTotal varchar(14);
+    sitTrib varchar(1);
+    codTipoServico varchar(2);
+    poltrona varchar(2);
+    
+    info varchar(116);
+    infoTS varchar(32);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numeroUsuario := nvl(:NEW.numUsuario, '');
+        ccf := nvl(:NEW.ccf, '');
+        coo := nvl(:NEW.coo, '');
+        codOrigem := nvl(:NEW.codOrigem, '');
+        codDestino := nvl(:NEW.codDestino, '');
+        valorTotal := nvl(:NEW.valorTotal, '');
+        sitTrib := nvl(:NEW.sitTrib, '');
+        codTipoServico := nvl(:NEW.codTipoServico, '');
+        poltrona := nvl(:NEW.poltrona, '');
+        
+        info := numSerie20 || mfAdicional || modelo || numeroUsuario || ccf || coo || codOrigem || codDestino || valorTotal || sitTrib || codTipoServico || poltrona;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        infoTS := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (codTipoServico, 'AL32UTF8'), 2);
+        
+        if user <> '<%= @userdb %>' then
+          :NEW.hashbd := info;
+          :NEW.hashtsbd := infoTS;
+        else
+          :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashbd := info;
+
+          :NEW.hashtsvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || infoTS, 'AL32UTF8'), 2);
+          :NEW.hashtsbd := infoTS;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_F3" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_ML2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_ML2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_ML2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+
+    tipoReg varchar(2);
+    cnpjMatriz varchar(14);
+    ieEmpTransp varchar(14);
+    imEmpTransp varchar(14);
+    numSerie20 varchar(20);
+    mfAdicional varchar(1);
+    tipoEcf varchar(7);
+    marca varchar(20);
+    modelo varchar(20);
+    numUsuario varchar(2);
+    ccf varchar(6); --M
+    coo varchar(6);
+    gnf varchar(6); --L
+    grg varchar(6); --L
+    dataEmissao varchar(8);
+    horaEmissao varchar(6);
+    modalidade varchar(2);
+    categoria varchar(2);
+    identLinha varchar(8);
+    codOrigem varchar(20);
+    codDestino varchar(20);
+    tipoServico varchar(2);
+    dataViagem varchar(8);
+    horaViagem varchar(6);
+    tipoViagem varchar(2);
+    poltrona varchar(7);
+    plataforma varchar(15);
+    codDesconto varchar(8);
+    valorTarifa varchar(8);
+    aliquota varchar(4); --M
+    pedagio varchar(8);
+    taxaEmbarque varchar(8);
+    valorTotal varchar(8);
+    formaPago varchar(2);
+    valorPago varchar(8);
+    nomePassageiro varchar(50);
+    numDocIdentif varchar(40);
+    sac varchar(15);
+    agencia varchar(35);
+
+    info varchar(433);
+  begin
+    impressora_id := 0;
+
+    IF DELETING THEN
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+
+    if INSERTING or UPDATING then
+        tipoReg := nvl(:NEW.tipoReg, '');
+        cnpjMatriz := nvl(:NEW.cnpjMatriz, '');
+        ieEmpTransp := nvl(:NEW.ieEmpTransp, '');
+        imEmpTransp := nvl(:NEW.imEmpTransp, '');
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        tipoEcf := nvl(:NEW.tipoEcf, '');
+        marca := nvl(:NEW.marca, '');
+        modelo := nvl(:NEW.modelo, '');
+        numUsuario := nvl(:NEW.numUsuario, '');
+        coo := nvl(:NEW.coo, '');
+        dataEmissao := nvl(:NEW.dataEmissao, '');
+        horaEmissao := nvl(:NEW.horaEmissao, '');
+        modalidade := nvl(:NEW.modalidade, '');
+        categoria := nvl(:NEW.categoria, '');
+        identLinha := nvl(:NEW.identLinha, '');
+        codOrigem := nvl(:NEW.codOrigem, '');
+        codDestino := nvl(:NEW.codDestino, '');
+        tipoServico := nvl(:NEW.tipoServico, '');
+        dataViagem := nvl(:NEW.dataViagem, '');
+        horaViagem := nvl(:NEW.horaViagem, '');
+        tipoViagem := nvl(:NEW.tipoViagem, '');
+        poltrona := nvl(:NEW.poltrona, '');
+        plataforma := nvl(:NEW.plataforma, '');
+        codDesconto := nvl(:NEW.codDesconto, '');
+        valorTarifa := nvl(:NEW.valorTarifa, '');
+        pedagio := nvl(:NEW.pedagio, '');
+        taxaEmbarque := nvl(:NEW.taxaEmbarque, '');
+        valorTotal := nvl(:NEW.valorTotal, '');
+        formaPago := nvl(:NEW.formaPago, '');
+        valorPago := nvl(:NEW.valorPago, '');
+        nomePassageiro := nvl(:NEW.nomePassageiro, '');
+        numDocIdentif := nvl(:NEW.numDocIdentif, '');
+        sac := nvl(:NEW.sac, '');
+        agencia := nvl(:NEW.agencia, '');
+
+        if UPPER(tipoReg) = 'M2' then
+            ccf := nvl(:NEW.ccf, '');
+            aliquota := nvl(:NEW.aliquota, '');
+            gnf := '';
+            grg := '';
+        else
+            gnf := nvl(:NEW.gnf, '');
+            grg := nvl(:NEW.grg, '');
+            ccf := '';
+            aliquota := '';
+        end if;
+
+        --info := tipoReg || cnpjMatriz || ieEmpTransp || imEmpTransp || numSerie20 || mfAdicional || tipoEcf || marca || modelo || numUsuario || ccf || coo || gnf || grg || dataEmissao || horaEmissao || modalidade || categoria || identLinha || codOrigem || codDestino || tipoServico || dataViagem || horaViagem || tipoViagem || poltrona || plataforma || codDesconto || valorTarifa || aliquota || pedagio || taxaEmbarque || valorTotal || formaPago || valorPago || nomePassageiro || numDocIdentif || sac || agencia;
+        --info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (tipoReg || cnpjMatriz || ieEmpTransp || imEmpTransp || numSerie20 || mfAdicional || tipoEcf || marca || modelo || numUsuario || ccf || coo || gnf || grg || dataEmissao || horaEmissao || modalidade || categoria || identLinha || codOrigem || codDestino || tipoServico || dataViagem || horaViagem || tipoViagem || poltrona || plataforma || codDesconto || valorTarifa || aliquota || pedagio || taxaEmbarque || valorTotal || formaPago || valorPago || nomePassageiro || numDocIdentif || sac || agencia, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+          :NEW.hashbd := info;
+        else
+          :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_ML2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_P2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_P2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_P2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    chave CONSTANT varchar2(7) := 'RJA2014';
+  
+    id_empresa number;
+    
+    codproduto varchar2(14);
+    descricao varchar2(60);
+    valorunitario_ta number(7,2);
+    valorunitario_tx number(7,2);
+    valorunitario_pe number(7,2);
+    valorunitario_ot number(7,2);
+    valorunitario_se number(7,2);
+    empresa_id number;
+    estado_id number;
+    estado_origem number;
+    estado_aliascorrida number;
+    estado_aliasgeral number;
+    
+    infovta varchar2(90);
+    infobd varchar2(90);
+  begin
+    id_empresa := 0;
+  
+    IF DELETING THEN 
+      id_empresa := :OLD.empresa_id;
+    ELSIF INSERTING THEN
+      id_empresa := :NEW.empresa_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.empresa_id = id_empresa;
+    end if;
+    
+    if INSERTING or UPDATING then
+        codproduto := nvl(:NEW.codproduto, '');
+        descricao := nvl(:NEW.descricao, '');
+        
+        valorunitario_ta := nvl(:NEW.valorunitario_ta, -1);
+        valorunitario_tx := nvl(:NEW.valorunitario_tx, -1);
+        valorunitario_pe := nvl(:NEW.valorunitario_pe, -1);
+        valorunitario_se := nvl(:NEW.valorunitario_se, -1);
+        valorunitario_ot := nvl(:NEW.valorunitario_ot, -1);
+        
+        estado_origem := nvl(:NEW.estado_origem, -1);
+        estado_aliascorrida := nvl(:NEW.estado_aliascorrida, -1);
+        estado_aliasgeral := nvl(:NEW.estado_aliasgeral, -1);
+        
+        estado_id := 0;
+        
+        if estado_aliascorrida <> -1 then
+            estado_id := estado_aliascorrida;
+        elsif estado_aliasgeral <> -1 then
+            estado_id := estado_aliasgeral;
+        else
+            estado_id := estado_origem;
+        end if;
+        
+        if valorunitario_ta <> -1 then
+            infovta := codproduto || descricao || to_char(valorunitario_ta) || to_char(estado_id);
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infovta, 'AL32UTF8'), 2);
+            infobd := infovta;
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (chave || infovta, 'AL32UTF8'), 2);
+            
+            if user <> '<%= @userdb %>' then
+              :NEW.hashbd_ta := infobd;
+            else
+              :NEW.hashvta_ta := infovta;
+              :NEW.hashbd_ta := infobd;
+            end if;
+        end if;
+        
+        if valorunitario_tx <> -1 then
+            infovta := codproduto || descricao || to_char(valorunitario_tx) || to_char(estado_id);
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infovta, 'AL32UTF8'), 2);
+            infobd := infovta;
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (chave || infovta, 'AL32UTF8'), 2);
+            
+            if user <> '<%= @userdb %>' then
+              :NEW.hashbd_tx := infobd;
+            else
+              :NEW.hashvta_tx := infovta;
+              :NEW.hashbd_tx := infobd;
+            end if;
+        end if;
+        
+        if valorunitario_pe <> -1 then
+            infovta := codproduto || descricao || to_char(valorunitario_pe) || to_char(estado_id);
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infovta, 'AL32UTF8'), 2);
+            infobd := infovta;
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (chave || infovta, 'AL32UTF8'), 2);
+            
+            if user <> '<%= @userdb %>' then
+              :NEW.hashbd_pe := infobd;
+            else
+              :NEW.hashvta_pe := infovta;
+              :NEW.hashbd_pe := infobd;
+            end if;
+        end if;
+        
+        if valorunitario_se <> -1 then
+            infovta := codproduto || descricao || to_char(valorunitario_se) || to_char(estado_id);
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infovta, 'AL32UTF8'), 2);
+            infobd := infovta;
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (chave || infovta, 'AL32UTF8'), 2);
+            
+            if user <> '<%= @userdb %>' then
+              :NEW.hashbd_se := infobd;
+            else
+              :NEW.hashvta_se := infovta;
+              :NEW.hashbd_se := infobd;
+            end if;
+        end if;
+        
+        if valorunitario_ot <> -1 then
+            infovta := codproduto || descricao || to_char(valorunitario_ot) || to_char(estado_id);
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (infovta, 'AL32UTF8'), 2);
+            infobd := infovta;
+            infovta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (chave || infovta, 'AL32UTF8'), 2);
+            
+            if user <> '<%= @userdb %>' then
+              :NEW.hashbd_ot := infobd;
+            else
+              :NEW.hashvta_ot := infovta;
+              :NEW.hashbd_ot := infobd;
+            end if;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_P2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R1
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R1" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_IMPRESSORA
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    pv_id number;
+    
+    numeroSerie20 varchar(20);
+    mfAdicional varchar(1);
+    marca varchar(20);
+    modelo varchar(20);
+    versionSB varchar(10);
+    dataHoraInstalacao varchar(14);
+    numeroSeqEcf varchar(3);
+    cnpjUsuario varchar(20);
+    ieUsuario varchar(20);
+    tipoEcf varchar(7);
+    
+    info varchar(322);
+    infoP2 varchar(32);
+  begin
+    pv_id := 0;
+  
+    IF DELETING THEN 
+      pv_id := :OLD.puntoventa_id;
+    ELSIF INSERTING THEN
+      pv_id := :NEW.puntoventa_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = pv_id;
+    end if;
+    
+    if INSERTING or UPDATING then
+        numeroSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        marca := nvl(:NEW.marca, '');
+        modelo := nvl(:NEW.modelo, '');
+        versionSB := nvl(:NEW.versionSB, '');
+        numeroSeqEcf := nvl(:NEW.numSeqEcf, '');
+        tipoEcf := nvl(:NEW.tipoEcf, '');
+
+        if (:NEW.datHorInstalacao IS NULL) then
+            dataHoraInstalacao := '';
+        else
+            dataHoraInstalacao := to_char(:NEW.datHorInstalacao, 'YYYYMMddhh24miss');
+        end if;
+        
+        cnpjUsuario := nvl(:NEW.numcnpj, '');
+        ieUsuario := nvl(:NEW.numie, '');
+        
+        info := numeroSerie20 || mfAdicional || marca || modelo || versionSB || dataHoraInstalacao || numeroSeqEcf || cnpjUsuario || ieUsuario || tipoEcf;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        infoP2 := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (cnpjUsuario, 'AL32UTF8'), 2);
+
+          if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+            :NEW.hashp2bd := infoP2;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+            
+            :NEW.hashp2vta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || infoP2, 'AL32UTF8'), 2);
+            :NEW.hashp2bd := infoP2;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R1" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numSerie20 varchar(20);
+    mfAdicional varchar(1);
+    modelo varchar(20);
+    numeroUsuario varchar(2);
+    crz varchar(6);
+    coo varchar(6);
+    cro varchar(6);
+    datamov varchar(8);
+    dataReducao varchar(8);
+    horaReducao varchar(6);
+    vendaBrutaDiaria varchar(18);
+    
+    info varchar(105);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numeroUsuario := nvl(:NEW.numUsuario, '');
+        crz := nvl(:NEW.crz, '');
+        coo := nvl(:NEW.coo, '');
+        cro := nvl(:NEW.cro, '');
+        datamov := nvl(:NEW.datamov, '');
+        dataReducao := nvl(:NEW.dataReducao, '');
+        horaReducao := nvl(:NEW.horaReducao, '');
+        vendaBrutaDiaria := nvl(:NEW.vendaBrutaDiaria, '');
+        
+        info := numSerie20 || mfAdicional || modelo || numeroUsuario || crz || coo || cro || datamov || dataReducao || horaReducao || vendaBrutaDiaria;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R3
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R3" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R3
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numSerie20 varchar(20);
+    mfAdicional varchar(1);
+    modelo varchar(20);
+    numeroUsuario varchar(2);
+    crz varchar(6);
+    totParcial varchar(7);
+    valorAcumulado varchar(13);
+    
+    info varchar(72);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numeroUsuario := nvl(:NEW.numUsuario, '');
+        crz := nvl(:NEW.crz, '');
+        totParcial := nvl(:NEW.totParcial, '');
+        valorAcumulado := nvl(:NEW.valorAcumulado, '');
+        
+        info := numSerie20 || mfAdicional || modelo || numeroUsuario || crz || totParcial || valorAcumulado;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R3" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R4
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R4" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R4
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numSerie20 varchar(20);
+    mfAdicional varchar(1);
+    modelo varchar(20);
+    numeroUsuario varchar(2);
+    contador varchar(6);
+    coo varchar(6);
+    dataInicialEmissao varchar(8);
+    impSubtotal varchar(14);
+    impDesconto varchar(13);
+    indTipoDesconto varchar(1);
+    impAcrescimo varchar(13);
+    indTipoAcrescimo varchar(1);
+    impTotalLiquido varchar(14);
+    indCancelamento varchar(1);
+    impCancelamento varchar(13);
+    indDescontoAcrescimo varchar(1);
+    nomeCliente varchar(40);
+    cpfCnpjCliente varchar(14);
+    
+    info varchar(191);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numeroUsuario := nvl(:NEW.numUsuario, '');
+        contador := nvl(:NEW.contador, '');
+        coo := nvl(:NEW.coo, '');
+        dataInicialEmissao := nvl(:NEW.dataInicialEmissao, '');
+        impSubtotal := nvl(:NEW.impSubtotal, '');
+        impDesconto := nvl(:NEW.impDesconto, '');
+        indTipoDesconto := nvl(:NEW.indTipoDesconto, '');
+        impAcrescimo := nvl(:NEW.impAcrescimo, '');
+        indTipoAcrescimo := nvl(:NEW.indTipoAcrescimo, '');
+        impTotalLiquido := nvl(:NEW.impTotalLiquido, '');
+        indCancelamento := nvl(:NEW.indCancelamento, '');
+        impCancelamento := nvl(:NEW.impCancelamento, '');
+        indDescontoAcrescimo := nvl(:NEW.indDescontoAcrescimo, '');
+        nomeCliente := nvl(:NEW.nomeCliente, '');
+        cpfCnpjCliente := nvl(:NEW.cpfCnpjCliente, '');
+        
+        info := numSerie20 || mfAdicional || modelo || numeroUsuario || contador || coo || dataInicialEmissao || impSubtotal || impDesconto || indTipoDesconto || impAcrescimo || indTipoAcrescimo || impTotalLiquido || indCancelamento || impCancelamento || indDescontoAcrescimo || nomeCliente || cpfCnpjCliente;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R4" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R5
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R5" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R5
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numSerie20 varchar2(20); 
+    mfAdicional varchar2(1); 
+    modelo varchar2(20); 
+    numeroUsuario varchar2(2); 
+    coo varchar2(6); 
+    contador varchar2(6); 
+    numItem varchar2(3); 
+    codProduto varchar2(14); 
+    descricao varchar2(100); 
+    quantidade varchar2(7); 
+    unidade varchar2(3); 
+    impUnitario varchar2(8); 
+    impDesconto varchar2(8); 
+    impAcrescimo varchar2(8); 
+    impTotalLiquido varchar2(14); 
+    totParcial varchar2(7); 
+    indCancelamento varchar2(1); 
+    quantCancelada varchar2(7); 
+    impCancelamento varchar2(13); 
+    impCancAcrescimo varchar2(13); 
+    indArredTrunc varchar2(1); 
+    indProdPropTerc varchar2(1); 
+    numCasasDecQuant varchar2(1); 
+    numCasasValUnitario varchar2(1);
+    
+    info varchar(268);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numSerie20 := nvl(:NEW.numserie20, '');
+        mfAdicional := nvl(:NEW.mfAdicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numeroUsuario := nvl(:NEW.numUsuario, '');
+        coo := nvl(:NEW.coo, '');
+        contador := nvl(:NEW.contador, '');
+        numItem := nvl(:NEW.numItem, '');
+        codProduto := nvl(:NEW.codProduto, '');
+        descricao := nvl(:NEW.descricao, '');
+        quantidade := nvl(:NEW.quantidade, '');
+        unidade := nvl(:NEW.unidade, '');
+        impUnitario := nvl(:NEW.impUnitario, '');
+        impDesconto := nvl(:NEW.impDesconto, '');
+        impAcrescimo := nvl(:NEW.impAcrescimo, '');
+        impTotalLiquido := nvl(:NEW.impTotalLiquido, '');
+        totParcial := nvl(:NEW.totParcial, '');
+        indCancelamento := nvl(:NEW.indCancelamento, '');
+        quantCancelada := nvl(:NEW.quantCancelada, '');
+        impCancelamento := nvl(:NEW.impCancelamento, '');
+        impCancAcrescimo := nvl(:NEW.impCancAcrescimo, '');
+        indArredTrunc := nvl(:NEW.indArredTrunc, '');
+        indProdPropTerc := nvl(:NEW.indProdPropTerc, '');
+        numCasasDecQuant := nvl(:NEW.numCasasDecQuant, '');
+        numCasasValUnitario := nvl(:NEW.numCasasValUnitario, '');
+        
+        info := numSerie20 || mfAdicional || modelo || numeroUsuario || coo || contador || numItem || codProduto || descricao || quantidade || unidade || impUnitario || impDesconto || impAcrescimo || impTotalLiquido || totParcial || indCancelamento || quantCancelada || impCancelamento || impCancAcrescimo || indArredTrunc || indProdPropTerc || numCasasDecQuant || numCasasValUnitario;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+          if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R5" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R6
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R6" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R6
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numserie20 varchar2(20);
+    mfadicional varchar2(1);
+    modelo varchar2(20);
+    numusuario varchar2(2);
+    coo varchar2(6);
+    gnf varchar2(6);
+    grg varchar2(6);
+    cdc varchar2(4);
+    denominacao varchar2(2);
+    dataFinalEmissao varchar2(8);
+    horaFinalEmissao varchar2(6);
+    
+    info varchar(84);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        numserie20 := nvl(:NEW.numserie20, '');
+        mfadicional := nvl(:NEW.mfadicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numusuario := nvl(:NEW.numusuario, '');
+        coo := nvl(:NEW.coo, '');
+        gnf := nvl(:NEW.gnf, '');
+        grg := nvl(:NEW.grg, '');
+        cdc := nvl(:NEW.cdc, '');
+        denominacao := nvl(:NEW.denominacao, '');
+        dataFinalEmissao := nvl(:NEW.dataFinalEmissao, '');
+        horaFinalEmissao := nvl(:NEW.horaFinalEmissao, '');
+        
+        info := numserie20 || mfadicional || modelo || numusuario || coo || gnf || grg || cdc || denominacao || dataFinalEmissao || horaFinalEmissao;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+              :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R6" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_R7
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R7" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_R7
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    numserie20 varchar2(20);
+    mfadicional varchar2(1);
+    modelo varchar2(20);
+    numusuario varchar2(2);
+    coo varchar2(6);
+    ccf varchar2(6);
+    gnf varchar2(6);
+    descpago varchar2(15);
+    importe varchar2(13);
+    indestorno varchar2(1);
+    importeestorno varchar2(13);
+    
+    info varchar(106);
+  begin
+    impressora_id := 0;
+  
+    if DELETING then 
+        impressora_id := :OLD.fiscalimpressora_id;
+    elsif INSERTING then
+        impressora_id := :NEW.fiscalimpressora_id;
+    end if;
+
+    if user <> '<%= @userdb %>' then
+        update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+
+    if INSERTING or UPDATING then
+        numserie20 := nvl(:NEW.numserie20, '');
+        mfadicional := nvl(:NEW.mfadicional, '');
+        modelo := nvl(:NEW.modelo, '');
+        numusuario := nvl(:NEW.numusuario, '');
+        coo := nvl(:NEW.coo, '');
+        ccf := nvl(:NEW.ccf, '');
+        gnf := nvl(:NEW.gnf, '');
+        descpago := nvl(:NEW.descpago, '');
+        importe := nvl(:NEW.importe, '');
+        indestorno := nvl(:NEW.indestorno, '');
+        importeestorno := nvl(:NEW.importeestorno, '');
+        
+        info := numserie20 || mfadicional || modelo || numusuario || coo || ccf || gnf || descpago || importe || indestorno || importeestorno;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+
+        if user <> '<%= @userdb %>' then
+            :NEW.hashbd := info;
+        else
+            :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+            :NEW.hashbd := info;
+        end if;
+    end if;
+end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_R7" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PAF_FISCAL_T2
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_T2" 
+  before delete or insert or update on <%= @userdb %>.FISCAL_T2
+  REFERENCING NEW AS NEW OLD AS OLD
+  for each row
+  declare
+    impressora_id number;
+    
+    cnpj varchar(14);
+    dataMov varchar(8);
+    tipoDocumento varchar(10);
+    serieBilhete varchar(2);
+    cooInicial varchar(6);
+    cooFinal varchar(6);
+    numSerie20 varchar(20);
+    crz varchar(6);
+    cfop varchar(6);
+    valorContabil varchar(13);
+    baseCalculo varchar(13);
+    aliquota varchar(4);
+    valorImposto varchar(13);
+    valorIsentas varchar(13);
+    valorOutras varchar(13);
+    
+    info varchar(147);
+  begin
+    impressora_id := 0;
+  
+    IF DELETING THEN 
+      impressora_id := :OLD.fiscalimpressora_id;
+    ELSIF INSERTING THEN
+      impressora_id := :NEW.fiscalimpressora_id;
+    END IF;
+
+    if user <> '<%= @userdb %>' then
+      update punto_venta p set p.pafinvalido = 1 where p.puntoventa_id = (select puntoventa_id from fiscal_impressora where fiscalimpressora_id = impressora_id);
+    end if;
+    
+    if INSERTING or UPDATING then
+        cnpj := nvl(:NEW.cnpj, '');
+        dataMov := nvl(:NEW.dataMov, '');
+        tipoDocumento := nvl(:NEW.tipoDocumento, '');
+        serieBilhete := nvl(:NEW.serieBilhete, '');
+        cooInicial := nvl(:NEW.cooInicial, '');
+        cooFinal := nvl(:NEW.cooFinal, '');
+        numSerie20 := nvl(:NEW.numserie20, '');
+        crz := nvl(:NEW.crz, '');
+        cfop := nvl(:NEW.cfop, '');
+        valorContabil := nvl(:NEW.valorContabil, '');
+        baseCalculo := nvl(:NEW.baseCalculo, '');
+        aliquota := nvl(:NEW.aliquota, '');
+        valorImposto := nvl(:NEW.valorImposto, '');
+        valorIsentas := nvl(:NEW.valorIsentas, '');
+        valorOutras := nvl(:NEW.valorOutras, '');
+        
+        info := cnpj || dataMov || tipoDocumento || serieBilhete || cooInicial || cooFinal || numSerie20 || crz || cfop || valorContabil || baseCalculo || aliquota || valorImposto || valorIsentas || valorOutras;
+        info := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW (info, 'AL32UTF8'), 2);
+        
+        if user <> '<%= @userdb %>' then
+          :NEW.hashbd := info;
+        else
+          :NEW.hashvta := SYS.DBMS_CRYPTO.Hash (UTL_I18N.STRING_TO_RAW ('RJA2014' || info, 'AL32UTF8'), 2);
+          :NEW.hashbd := info;
+        end if;
+    end if;
+  end;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PAF_FISCAL_T2" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PARADA_INTEG_TOTVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PARADA_INTEG_TOTVS" BEFORE INSERT OR UPDATE OF "PARADA_ID","DESCPARADA","CVEPARADA","TIPOPARADA_ID","CIUDAD_ID","NODO_ID","EQUIVALENCIAELEKTRA_ID","EQUIVALENCIA_ID","ACTIVO","FECMODIF","USUARIO_ID","CODANTT","INDVISIBLEINTERNET","REGIONMETROPOLITANA_ID" ON "<%= @userdb %>"."PARADA" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PARADA_INTEG_TOTVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_PUNTO_VENTA_INTEG_TOTVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_PUNTO_VENTA_INTEG_TOTVS" BEFORE INSERT OR UPDATE OF "PUNTOVENTA_ID","NOMBPUNTOVENTA","FECMODIF" ON "<%= @userdb %>"."PUNTO_VENTA" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_PUNTO_VENTA_INTEG_TOTVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_RUTA_INTEG_TOVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_RUTA_INTEG_TOVS" 
+BEFORE INSERT OR UPDATE OF 
+"RUTA_ID",
+"DESCRUTA",
+"CLASESERVICIO_ID",
+"ACTIVO",
+"ORGAOCONCEDENTE_ID",
+"PREFIXO"
+
+
+ON "RUTA" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_RUTA_INTEG_TOVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_TIPO_PARADA_INTEG_TOVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_TIPO_PARADA_INTEG_TOVS" 
+BEFORE INSERT OR UPDATE OF 
+"TIPOPARADA_ID",
+"DESCTIPO",
+"EQUIVALENCIA_ID",
+"ACTIVO",
+"FECMODIF",
+"USUARIO_ID"
+
+ON "TIPO_PARADA" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_TIPO_PARADA_INTEG_TOVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_UPD_DISP_EXCLUSIVO
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_UPD_DISP_EXCLUSIVO" 
+AFTER INSERT OR UPDATE
+ON <%= @userdb %>.ASIENTO_EXCLUSIVO 
+REFERENCING NEW AS NEW OLD AS OLD
+FOR EACH ROW
+DECLARE
+      /*
+      * Variables
+      */
+      varDisponibilidad DISPONIBILIDAD%ROWTYPE;
+      varSecOrigen   <%= @userdb %>.CORRIDA_TRAMO.NUMSECORIGEN%TYPE;
+      varSecDestino  <%= @userdb %>.CORRIDA_TRAMO.NUMSECDESTINO%TYPE;
+      varSecOrigenOLD   <%= @userdb %>.CORRIDA_TRAMO.NUMSECORIGEN%TYPE;
+      varSecDestinoOLD  <%= @userdb %>.CORRIDA_TRAMO.NUMSECDESTINO%TYPE;
+      /*
+      * Constantes
+      */
+      constActivo CONSTANT NUMBER := 1;
+      constStatusAsiento       NUMBER := 2;     -- Selecciona Asiento Cedido
+BEGIN
+      IF (:NEW.VENDIBLE = 0) THEN
+            constStatusAsiento := 3;           -- Cambia a Asiento Bloqueado
+      END IF;
+      
+      IF (:NEW.DESTINO_ID IS NULL)  THEN       -- Busca los datos del asiento cedido 
+          BEGIN
+              SELECT
+                   tc1.NUMSECORIGEN,
+                   tc2.NUMSECDESTINO
+              INTO
+                   varSecOrigen,
+                   varSecDestino
+              FROM
+                   <%= @userdb %>.CORRIDA_TRAMO tc1,
+                   <%= @userdb %>.CORRIDA_TRAMO tc2,
+                   <%= @userdb %>.CORRIDA c
+              WHERE
+                   tc1.feccorrida = :NEW.FECCORRIDA AND
+                   tc1.corrida_id = :NEW.CORRIDA_ID AND
+                   
+                   tc2.feccorrida = tc1.feccorrida AND
+                   tc2.corrida_id = tc1.corrida_id AND
+                   
+                   c.corrida_id = tc1.corrida_id AND
+                   c.feccorrida = tc1.feccorrida AND
+                   
+                   tc1.origen_id = :NEW.PARADA_ID AND
+                   tc2.destino_id = c.destino_id AND
+                   
+                   tc1.activo = constActivo AND
+                   tc2.activo = constActivo AND
+                   c.activo = constActivo;
+                   
+                EXCEPTION --Cuando no encuentra es porque no hay corrida_tramo para la parada_id 
+                WHEN NO_DATA_FOUND THEN  
+                  RETURN;
+                   
+            END;
+      ELSE
+           BEGIN  
+               SELECT     -- Busca los datos del asiento bloqueado
+                     tc1.NUMSECORIGEN,
+                     tc2.NUMSECDESTINO
+               INTO
+                     varSecOrigen,
+                     varSecDestino
+               FROM
+                     <%= @userdb %>.CORRIDA_TRAMO tc1,
+                     <%= @userdb %>.CORRIDA_TRAMO tc2,
+                     <%= @userdb %>.CORRIDA c
+               WHERE
+                     tc1.feccorrida = :NEW.FECCORRIDA AND
+                     tc1.corrida_id = :NEW.CORRIDA_ID AND
+                     
+                     tc2.feccorrida = tc1.feccorrida AND
+                     tc2.corrida_id = tc1.corrida_id AND
+                     
+                     c.corrida_id = tc1.corrida_id AND
+                     c.feccorrida = tc1.feccorrida AND
+                     
+                     tc1.origen_id = :NEW.PARADA_ID AND
+                     tc2.destino_id =:NEW.DESTINO_ID AND
+                     
+                     tc1.activo = constActivo AND
+                     tc2.activo = constActivo AND
+                     c.activo = constActivo;
+                     
+                EXCEPTION --Cuando no encuentra es porque no hay corrida_tramo para la parada_id - destino_id
+                    WHEN NO_DATA_FOUND THEN  
+                      RETURN;
+                
+            END;
+      END IF;
+      
+      IF UPDATING THEN
+            SELECT
+                  tc1.NUMSECORIGEN,
+                  tc2.NUMSECDESTINO
+            INTO
+                  varSecOrigenOLD,
+                  varSecDestinoOLD
+            FROM
+                  <%= @userdb %>.CORRIDA_TRAMO tc1,
+                  <%= @userdb %>.CORRIDA_TRAMO tc2,
+                  <%= @userdb %>.CORRIDA c
+            WHERE
+                  tc1.feccorrida = :OLD.FECCORRIDA AND
+                  tc1.corrida_id = :OLD.CORRIDA_ID AND
+                  tc2.feccorrida = tc1.feccorrida AND
+                  c.corrida_id = tc1.corrida_id AND
+                  c.feccorrida = tc1.feccorrida AND
+                  tc2.corrida_id = tc1.corrida_id AND
+                  tc1.origen_id = :OLD.PARADA_ID AND
+                  tc2.destino_id = c.destino_id AND
+                  tc1.activo = constActivo AND
+                  tc2.activo = constActivo AND
+                  c.activo = constActivo;
+            IF (:NEW.ACTIVO = 0) THEN
+                  DELETE
+                  FROM
+                        <%= @userdb %>.DISPONIBILIDAD
+                  WHERE
+                        corrida_id = :NEW.CORRIDA_ID AND
+                        fecCorrida = :NEW.FECCORRIDA AND
+                        secOrigen = varSecOrigenOLD AND
+                        numAsiento = :NEW.NUMASIENTO AND
+                        activo = constActivo AND
+                        statusAsiento = constStatusAsiento;
+            ELSE
+                  UPDATE
+                        <%= @userdb %>.DISPONIBILIDAD
+                  SET
+                        secOrigen = varSecOrigen,
+                        statusAsiento = constStatusAsiento
+              WHERE
+                        corrida_id = :NEW.CORRIDA_ID AND
+                        fecCorrida = :NEW.FECCORRIDA AND
+                        secOrigen = varSecOrigenOLD AND
+                        secDestino = varSecDestinoOLD AND
+                        numAsiento = :NEW.NUMASIENTO AND
+                        activo = constActivo;
+                  IF (SQL%NOTFOUND) THEN
+                        BEGIN
+                             INSERT INTO
+                                   <%= @userdb %>.DISPONIBILIDAD
+                             (
+                                   DISPONIBILIDAD_ID,
+                                   CORRIDA_ID,
+                                   FECCORRIDA,
+                                   SECORIGEN,
+                                   SECDESTINO,
+                                   NUMASIENTO,
+                                   STATUSASIENTO,
+                                   ACTIVO,
+                                   FECMODIF,
+                                   USUARIO_ID
+                             )
+                             VALUES
+                             (
+                                   <%= @userdb %>.DISPONIBILIDAD_SEQ.NEXTVAL,
+                                   :NEW.CORRIDA_ID,
+                                   :NEW.FECCORRIDA,
+                                   varSecOrigen,
+                                   varSecDestino,
+                                   :NEW.NUMASIENTO,
+                                   constStatusAsiento,
+                                   :NEW.ACTIVO,
+                                   :NEW.FECMODIF,
+                                   :NEW.USUARIO_ID
+                              );
+                        EXCEPTION
+                             WHEN OTHERS THEN
+                                   DBMS_OUTPUT.PUT_LINE (
+                                         'Fracaso insercion del registro.'
+                                         || SQLERRM || ' corrida_id:' || :NEW.CORRIDA_ID
+                                         || ' parada_id:' || :NEW.PARADA_ID);
+                        END;
+                  END IF;
+            END IF;
+      END IF;
+      IF INSERTING THEN
+          BEGIN
+            IF (:NEW.ACTIVO <> 0) THEN
+            BEGIN
+                 INSERT INTO
+                       <%= @userdb %>.DISPONIBILIDAD
+                 (
+                       DISPONIBILIDAD_ID,
+                       CORRIDA_ID,
+                       FECCORRIDA,
+                       SECORIGEN,
+                       SECDESTINO,
+                       NUMASIENTO,
+                       STATUSASIENTO,
+                       ACTIVO,
+                       FECMODIF,
+                       USUARIO_ID
+                 )
+                 VALUES
+                 (
+                       <%= @userdb %>.DISPONIBILIDAD_SEQ.NEXTVAL,
+                       :NEW.CORRIDA_ID,
+                       :NEW.FECCORRIDA,
+                       varSecOrigen,
+                       varSecDestino,
+                       :NEW.NUMASIENTO,
+                       constStatusAsiento,
+                       :NEW.ACTIVO,
+                       :NEW.FECMODIF,
+                       :NEW.USUARIO_ID
+                 );
+             EXCEPTION
+                  WHEN OTHERS THEN
+                        DBMS_OUTPUT.PUT_LINE (
+                              'Fracaso insercion del registro.'
+                              || SQLERRM || ' corrida_id:' || :NEW.CORRIDA_ID
+                               || ' parada_id:' || :NEW.PARADA_ID);
+            END;
+            END IF;
+        END ;
+      END IF;
+EXCEPTION
+      WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE ('Fracaso TRIGGER Tr_Upd_Disp_Asiento '
+            || SQLERRM || ' corrida_id:' || :NEW.CORRIDA_ID || ' parada_id:' || :NEW.PARADA_ID);
+            RAISE_APPLICATION_ERROR(-20011, 'Fracaso TRIGGER Tr_Upd_Disp_EXCLUSIVO ' || SQLERRM|| ' feccorrida:' || :NEW.FECCORRIDA || ' corrida_id:' || :NEW.CORRIDA_ID || ' parada_id:' || :NEW.PARADA_ID|| ' destino_id:' || :NEW.DESTINO_ID);
+END TR_UPD_DISP_EXCLUSIVO;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_UPD_DISP_EXCLUSIVO" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_UPD_DISPONIBILIDAD_BOLETO
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_UPD_DISPONIBILIDAD_BOLETO" 
+AFTER INSERT OR UPDATE
+OF INDSTATUSOPERACION
+ON <%= @userdb %>.BOLETO 
+REFERENCING NEW AS NEW OLD AS OLD
+FOR EACH ROW
+ WHEN (
+NEW.INDSTATUSOPERACION in ('F', 'I') AND
+      NEW.CORRIDA_ID IS NOT NULL AND
+      NEW.FECCORRIDA IS NOT NULL
+      ) DECLARE
+      /*
+      * Variables
+      */
+      varDispAsiento <%= @userdb %>.DISPONIBILIDAD%ROWTYPE;
+      varSecOrigen   <%= @userdb %>.CORRIDA_TRAMO.NUMSECORIGEN%TYPE;
+      varSecDestino  <%= @userdb %>.CORRIDA_TRAMO.NUMSECDESTINO%TYPE;
+      /*
+      * Constantes
+      */
+      constActivo CONSTANT NUMBER := 1;
+    constCerrada CONSTANT NUMBER := 2;
+      constStatusAsiento CONSTANT NUMBER := 1;
+BEGIN
+      SELECT
+            tc1.NUMSECORIGEN,tc2.NUMSECDESTINO
+      INTO
+            varSecOrigen,varSecDestino
+      FROM
+            <%= @userdb %>.CORRIDA_TRAMO tc1, <%= @userdb %>.CORRIDA_TRAMO tc2
+      WHERE
+            tc1.feccorrida = :NEW.FECCORRIDA AND
+            tc1.corrida_id = :NEW.CORRIDA_ID AND
+            tc2.feccorrida = tc1.feccorrida AND
+            tc2.corrida_id = tc1.corrida_id AND
+            tc1.origen_id = :NEW.ORIGEN_ID AND
+            tc2.destino_id = :NEW.DESTINO_ID AND
+            tc1.activo in (constActivo,constCerrada) AND
+            tc2.activo in (constActivo,constCerrada);
+      IF UPDATING THEN
+          BEGIN    
+          IF (:NEW.MOTIVOCANCELACION_ID = 12 OR :NEW.MOTIVOCANCELACION_ID = 27) THEN
+            DELETE
+                  FROM
+                        <%= @userdb %>.DISPONIBILIDAD
+              WHERE
+                corrida_id = :NEW.CORRIDA_ID AND
+                        fecCorrida = :NEW.FECCORRIDA AND
+                        secOrigen = varSecOrigen AND
+                        secDestino = varSecDestino AND
+                        numAsiento = :NEW.NUMASIENTO AND
+                  activo = constActivo AND
+                  statusAsiento = constStatusAsiento;
+          END IF;
+        
+                  SELECT
+                        *
+                  INTO
+                        varDispAsiento
+                FROM
+                        <%= @userdb %>.DISPONIBILIDAD
+                WHERE
+                        corrida_id = :NEW.CORRIDA_ID AND
+                        fecCorrida = :NEW.FECCORRIDA AND
+                        secOrigen = varSecOrigen AND
+                        secDestino = varSecDestino AND
+                        numAsiento = :NEW.NUMASIENTO AND
+                    activo = constActivo AND
+                    statusAsiento = constStatusAsiento;
+            EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+                        BEGIN
+                        IF (:NEW.MOTIVOCANCELACION_ID IS NULL) THEN
+                             BEGIN
+                             INSERT INTO
+                                   <%= @userdb %>.DISPONIBILIDAD
+                             (
+                                   DISPONIBILIDAD_ID,
+                                   CORRIDA_ID,
+                                   FECCORRIDA,
+                                   SECORIGEN,
+                                   SECDESTINO,
+                                   NUMASIENTO,
+                                   CATEGORIA_ID,
+                                   STATUSASIENTO,
+                                   ACTIVO,
+                                   FECMODIF,
+                                   USUARIO_ID
+                             )
+                             VALUES
+                             (
+                                   <%= @userdb %>.DISPONIBILIDAD_SEQ.NEXTVAL,
+                                   :NEW.CORRIDA_ID,
+                                   :NEW.FECCORRIDA,
+                                   varSecOrigen,
+                                   varSecDestino,
+                                   :NEW.NUMASIENTO,
+                                   :NEW.CATEGORIA_ID,
+                                   constStatusAsiento,
+                                   :NEW.ACTIVO,
+                                   :NEW.FECMODIF,
+                                   :NEW.USUARIO_ID
+                             );
+                        EXCEPTION
+                             WHEN OTHERS THEN
+                                   DBMS_OUTPUT.PUT_LINE (
+                                         'Fracaso la insercion del registro. '
+                                         || SQLERRM || ' id:' || :NEW.BOLETO_ID);
+                        END;
+                  END IF;
+              END;     
+        END;
+   END IF;
+      IF INSERTING THEN
+            IF (:NEW.MOTIVOCANCELACION_ID IS NULL) THEN
+                BEGIN
+                        SELECT
+                             *
+                        INTO
+                             varDispAsiento
+                      FROM
+                              <%= @userdb %>.DISPONIBILIDAD
+                      WHERE
+                             corrida_id = :NEW.CORRIDA_ID AND
+                             fecCorrida = :NEW.FECCORRIDA AND
+                             secOrigen = varSecOrigen AND
+                             secDestino = varSecDestino AND
+                             numAsiento = :NEW.NUMASIENTO AND
+                          activo = constActivo AND
+                          statusAsiento = constStatusAsiento;
+                  EXCEPTION
+                        WHEN NO_DATA_FOUND THEN
+                             BEGIN
+                                   INSERT INTO
+                                         <%= @userdb %>.DISPONIBILIDAD
+                                   (
+                                         DISPONIBILIDAD_ID,
+                                         CORRIDA_ID,
+                                         FECCORRIDA,
+                                         SECORIGEN,
+                                         SECDESTINO,
+                                         NUMASIENTO,
+                                         CATEGORIA_ID,
+                                         STATUSASIENTO,
+                                         ACTIVO,
+                                         FECMODIF,
+                                         USUARIO_ID
+                                   )
+                                   VALUES
+                                   (
+                                         <%= @userdb %>.DISPONIBILIDAD_SEQ.NEXTVAL,
+                                         :NEW.CORRIDA_ID,
+                                         :NEW.FECCORRIDA,
+                                         varSecOrigen,
+                                         varSecDestino,
+                                         :NEW.NUMASIENTO,
+                                         :NEW.CATEGORIA_ID,
+                                         constStatusAsiento,
+                                         :NEW.ACTIVO,
+                                         :NEW.FECMODIF,
+                                         :NEW.USUARIO_ID
+                                   );
+                             EXCEPTION
+                                   WHEN OTHERS THEN
+                                         DBMS_OUTPUT.PUT_LINE (
+                                               'Fracaso la insercion del registro. '
+                                               || SQLERRM || ' id:' || :NEW.BOLETO_ID);
+                             END;
+                  END;
+            ELSE
+                  DELETE
+                  FROM
+                        <%= @userdb %>.DISPONIBILIDAD
+              WHERE
+                        corrida_id = :NEW.CORRIDA_ID AND
+                        fecCorrida = :NEW.FECCORRIDA AND
+                        secOrigen = varSecOrigen AND
+                        secDestino = varSecDestino AND
+                        numAsiento = :NEW.NUMASIENTO AND
+                  activo = constActivo AND
+                  statusAsiento = constStatusAsiento;
+            END IF;
+      END IF;
+EXCEPTION
+      WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE ('Fracaso TRIGGER Tr_Upd_Disponibilidad_Boleto ' || SQLERRM || ' i');
+END Tr_Upd_Disponibilidad_Boleto;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_UPD_DISPONIBILIDAD_BOLETO" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_USUARIO_INTEG_TOTVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_USUARIO_INTEG_TOTVS" BEFORE INSERT OR UPDATE OF "USUARIO_ID","CVEUSUARIO","NOMBUSUARIO","ACTIVO","FECMODIF","TIPOUSUARIO_ID" ON "<%= @userdb %>"."USUARIO" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_USUARIO_INTEG_TOTVS" ENABLE;
+--------------------------------------------------------
+--  DDL for Trigger TR_VIA_INTEG_TOVS
+--------------------------------------------------------
+
+  CREATE OR REPLACE TRIGGER "<%= @userdb %>"."TR_VIA_INTEG_TOVS" 
+BEFORE INSERT OR UPDATE OF 
+"VIA_ID",
+"NOMBVIA"
+
+ON "VIA" REFERENCING OLD AS "OLD" NEW AS "NEW" FOR EACH ROW BEGIN
+:NEW.INTEGRADOTOTVS := 0; 
+END;
+/
+ALTER TRIGGER "<%= @userdb %>"."TR_VIA_INTEG_TOVS" ENABLE;

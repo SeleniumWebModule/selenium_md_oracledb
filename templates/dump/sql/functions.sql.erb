@@ -1,0 +1,215 @@
+
+--------------------------------------------------------
+--  DDL for Function CODPRODUTO
+--------------------------------------------------------
+
+  CREATE OR REPLACE FUNCTION "<%= @userdb %>"."CODPRODUTO" 
+(
+  ORIGENID IN NUMBER 
+, DESTINOID IN NUMBER 
+, RUTAID IN NUMBER 
+) RETURN VARCHAR2 AS 
+BEGIN
+  RETURN UPPER(rpad(trim(to_char(ORIGENID, 'xxxx')),4,'X') || rpad(trim(to_char(DESTINOID, 'xxxx')),4,'X') || rpad(trim(to_char(RUTAID, 'xxx')),3,'X'));
+END CODPRODUTO;
+
+/
+--------------------------------------------------------
+--  DDL for Function DATETIME_RDS
+--------------------------------------------------------
+
+  CREATE OR REPLACE FUNCTION "<%= @userdb %>"."DATETIME_RDS" RETURN DATE AS
+  DATA_RDS DATE;
+BEGIN
+  SELECT CAST(CURRENT_TIMESTAMP AS DATE)
+  INTO DATA_RDS
+  FROM DUAL;
+
+  RETURN CAST(CURRENT_TIMESTAMP AS DATE);
+END DATETIME_RDS;
+
+/
+--------------------------------------------------------
+--  DDL for Function FN_ARREDONDAMENTO_TARIFA
+--------------------------------------------------------
+
+  CREATE OR REPLACE FUNCTION "<%= @userdb %>"."FN_ARREDONDAMENTO_TARIFA" (pTarifa              IN NUMBER,
+                                                      pOrgaoConcedenteId   IN NUMBER,
+                                                      pImporteSeguro       IN NUMBER,
+                                                      pImporteTaxaEmbarque IN NUMBER,
+                                                      pImportePedagio      IN NUMBER,
+                                                      pImporteOutros       IN NUMBER,
+                                                      pTxEmbarque          IN INTEGER)
+  RETURN NUMBER AS
+
+  lStrPrecoTotal           VARCHAR(15);
+  lUltimoNumero            NUMBER;
+  lStrPenlultimoNumero     VARCHAR(2);
+  lStrParteInteira         VARCHAR(10);
+  lPrecoTotallArredondado  NUMBER;
+  lPrecoTotal              NUMBER;
+  lDiferencaArredondamento NUMBER;
+  lCentavos                NUMBER;
+  lDoisUltimos             NUMBER;
+  lTresUltimos             NUMBER;
+  lStrAntePenlultimoNumero NUMBER;
+
+  BEGIN
+
+    IF pTxEmbarque = 1
+    THEN
+      lPrecoTotal :=
+      coalesce(pTarifa, 0) + coalesce(pImporteSeguro, 0) + coalesce(pImporteTaxaEmbarque, 0) +
+      coalesce(pImportePedagio, 0) + coalesce(pImporteOutros, 0);
+    ELSE
+      lPrecoTotal :=
+      coalesce(pTarifa, 0) + coalesce(pImporteSeguro, 0) + coalesce(pImportePedagio, 0) +
+      coalesce(pImporteOutros, 0);
+    END IF;
+
+    --PARA A AGUIA BRANCA, O ?RG?O 10 APENAS CONSIDERA TARIFA (TALVEZ VAI EXISTIR A NECESSIDADE DE PARAMETRIZAR POR EMPRESA
+    IF pOrgaoConcedenteId = 10 THEN
+        lPrecoTotal :=coalesce(pTarifa, 0);
+    END IF;
+    
+    lPrecoTotallArredondado := lPrecoTotal;
+
+
+    lStrPrecoTotal := to_char(lPrecoTotal, '99999.99');
+    lUltimoNumero := to_number(substr(lStrPrecoTotal, -1), '9');
+    lStrPenlultimoNumero := substr(lStrPrecoTotal, length(lStrPrecoTotal) - 1, 1);
+    lStrParteInteira := trim(substr(lStrPrecoTotal, 0, length(lStrPrecoTotal) - 3));
+    lCentavos := to_number(substr(lStrPrecoTotal, -2, 2), '99');
+
+    -- SINFRA - MA - tarifas arredondadas a cada R$ 0,50 - com a seguinte regra, de 0,01 a 0,24 e de 0,51 a 0,74, arredonda para baixo, e de 0,25 a 0,49 e de 0,75 a 0,99, arredonda para cima.
+    IF pOrgaoConcedenteId = 17
+    THEN
+      IF lCentavos BETWEEN 1 AND 24
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || '00', '99999.99');
+      END IF;
+
+      IF (lCentavos BETWEEN 51 AND 74) OR (lCentavos BETWEEN 25 AND 49)
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || '50', '99999.99');
+      END IF;
+
+      IF lCentavos BETWEEN 75 AND 99
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || '00', '99999.99') + 1;
+      END IF;
+    END IF;
+
+    -- SETRANS - PI - tarifas arredondadas a cada R$ 0,10 - sendo de 0,01 a 0,04 arredonda para baixo, de 0,05 a 0,09, arredonda para cima.
+    IF pOrgaoConcedenteId = 18 OR pOrgaoConcedenteId = 10
+    THEN
+      IF lUltimoNumero BETWEEN 1 AND 4
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || lStrPenlultimoNumero || '0',
+                                             '99999.99');
+      END IF;
+
+      IF lUltimoNumero BETWEEN 6 AND 9
+      THEN
+        lPrecoTotallArredondado :=
+        to_number(lStrParteInteira || '.' || lStrPenlultimoNumero || '0', '99999.99') + 0.1;
+      END IF;
+    END IF;
+
+    --DER-MG -- DER-PB e DETRAN-CE: mesma regra para os dois, tarifas arredondadas a cada R$ 0,05, sendo de 0,01 a 0,024 e 0,051 a 0,074 arredonda para baixo e de 0,025 a 0,049 e de 0,075 a 0,099 arredonda para cima.
+    IF pOrgaoConcedenteId = 19 OR pOrgaoConcedenteId = 20 OR pOrgaoConcedenteId = 6
+    THEN
+      lStrPrecoTotal := to_char(lPrecoTotal, '99999.999');
+      lUltimoNumero := to_number(substr(lStrPrecoTotal, -1), '9');
+      lStrAntePenlultimoNumero := substr(lStrPrecoTotal, -3, 1);
+      lStrParteInteira := trim(substr(lStrPrecoTotal, 0, length(lStrPrecoTotal) - 4));
+      lDoisUltimos := to_number(substr(lStrPrecoTotal, -2, 2), '99');
+
+      IF lDoisUltimos BETWEEN 10 AND 24
+      THEN
+        lPrecoTotallArredondado := to_number(
+            lStrParteInteira || '.' || lStrAntePenlultimoNumero || '00', '99999.999');
+      END IF;
+
+      IF (lDoisUltimos BETWEEN 51 AND 74) OR (lDoisUltimos BETWEEN 25 AND 49)
+      THEN
+        lPrecoTotallArredondado := to_number(
+            lStrParteInteira || '.' || lStrAntePenlultimoNumero || '50', '99999.999');
+      END IF;
+
+      IF lDoisUltimos BETWEEN 75 AND 99
+      THEN
+        lPrecoTotallArredondado :=
+        to_number(lStrParteInteira || '.' || lStrAntePenlultimoNumero || '00', '99999.999') + 0.1;
+      END IF;
+    END IF;
+
+    --ARTESP
+    IF pOrgaoConcedenteId = 21
+    THEN
+      --regra 1
+      IF lUltimoNumero BETWEEN 1 AND 2
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || lStrPenlultimoNumero || '0',
+                                             '99999.99');
+      END IF;
+
+      --regras 2 e 3
+      IF (lUltimoNumero BETWEEN 3 AND 4) OR (lUltimoNumero BETWEEN 6 AND 7)
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || lStrPenlultimoNumero || '5',
+                                             '99999.99');
+      END IF;
+
+      --regra 5
+      IF lCentavos BETWEEN 98 AND 99
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || '00', '99999.99') + 1;
+        --regra 4
+      ELSIF lUltimoNumero BETWEEN 8 AND 9
+        THEN
+          lPrecoTotallArredondado := to_number(
+              lStrParteInteira || '.' || (to_number(substr(lCentavos, -2, 1), '9') + 1),
+              '99999.99');
+      END IF;
+    END IF;
+
+    IF pOrgaoConcedenteId= 9 OR pOrgaoConcedenteId = 22
+    THEN
+      lStrPrecoTotal := to_char(lPrecoTotal, '99999.9999');
+      lStrAntePenlultimoNumero := substr(lStrPrecoTotal, -4, 1);
+      lStrParteInteira := trim(substr(lStrPrecoTotal, 0, length(lStrPrecoTotal) - 5));
+      lTresUltimos := to_number(substr(lStrPrecoTotal, -3, 3), '999');
+
+      IF lTresUltimos BETWEEN 001 AND 254
+      THEN
+        lPrecoTotallArredondado := to_number(lStrParteInteira || '.' || lStrAntePenlultimoNumero || '000', '99999.9999');
+      END IF;
+      IF lTresUltimos BETWEEN 255 AND 754
+      THEN
+        lPrecoTotallArredondado := to_number(
+            lStrParteInteira || '.' || lStrAntePenlultimoNumero || '500', '99999.9999');
+      END IF;
+      IF lTresUltimos BETWEEN 755 AND 999
+      THEN
+        lPrecoTotallArredondado :=
+        to_number(lStrParteInteira || '.' || lStrAntePenlultimoNumero || '000', '99999.9999') + 0.1;
+      END IF;
+    END IF;
+
+    lDiferencaArredondamento := lPrecoTotallArredondado - lPrecoTotal;
+
+    RETURN pTarifa + ldiferencaarredondamento;
+
+  END FN_ARREDONDAMENTO_TARIFA;
+
+/
+--------------------------------------------------------
+--  DDL for Function SQUIRREL_GET_ERROR_OFFSET
+--------------------------------------------------------
+
+  CREATE OR REPLACE FUNCTION "<%= @userdb %>"."SQUIRREL_GET_ERROR_OFFSET" (query IN varchar2) return number authid current_user is      l_theCursor     integer default dbms_sql.open_cursor;      l_status        integer; begin          begin          dbms_sql.parse(  l_theCursor, query, dbms_sql.native );          exception                  when others then l_status := dbms_sql.last_error_position;          end;          dbms_sql.close_cursor( l_theCursor );          return l_status; end; 
+
+/
+
+  GRANT EXECUTE, DEBUG ON "<%= @userdb %>"."SQUIRREL_GET_ERROR_OFFSET" TO "<%= @userdb %>_TRC";
