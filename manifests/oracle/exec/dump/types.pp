@@ -17,6 +17,6 @@ class selenium_md_oracledb::oracle::exec::dump::types {
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
 		user        => 'oracle',
-		environment => "ORACLE_HOME=${selenium_md_oracledb::oracleHome}"
+		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"]
 	} 
 }
