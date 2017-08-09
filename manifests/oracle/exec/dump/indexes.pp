@@ -9,7 +9,7 @@ class selenium_md_oracledb::oracle::exec::dump::indexes {
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/sql/indexes.sql.erb"),
+		content => template("selenium_md_oracledb/dump/sql/indexes.sql.erb"),
 	} ->
 
 	exec {'create_indexes':
@@ -17,6 +17,7 @@ class selenium_md_oracledb::oracle::exec::dump::indexes {
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => "${selenium_md_oracledb::oracleHome}/scripts",
 		user        => 'oracle',
-		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"]
+		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"],
+		timeout     => 0
 	} 
 }
