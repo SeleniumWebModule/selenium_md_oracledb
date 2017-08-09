@@ -1,4 +1,6 @@
 class selenium_md_oracledb::oracle::exec::environment_variables {
+  require selenium_md_oracledb::oracle::configure::database
+  
   $sid = $selenium_md_oracledb::sid
   $oracleHome = $selenium_md_oracledb::oracleHome
 
