@@ -1,0 +1,4 @@
+insert into PAIS (PAIS_ID, NOMBPAIS, EQUIVALENCIA_ID, ACTIVO, FECMODIF, USUARIO_ID) values (3, 'BRASIL', null, 1, TIMESTAMP '2010-12-02 00:00:00', 1);
+commit;
+
+exit
