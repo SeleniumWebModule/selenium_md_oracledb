@@ -1,5 +1,5 @@
 class selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil::ciudad {
-	require selenium_md_oracledb::oracle::exec::initializationdata::constantes::plaza
+	require selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil::plaza
 
 	$pathFile = "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/constantes/brasil"
 
@@ -9,11 +9,11 @@ class selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		source => 'puppet:///modules/selenium_md_oracledb/initializationdata/constantes/brasil/ciudad.sql'
+		content => template("selenium_md_oracledb/initializationdata/constantes/brasil/ciudad.sql.erb")
 	} ->
 
 	exec {'insert_ciudad':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @ciudad.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @ciudad.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',

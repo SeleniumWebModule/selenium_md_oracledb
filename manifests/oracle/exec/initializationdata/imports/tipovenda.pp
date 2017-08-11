@@ -1,4 +1,4 @@
-class selenium_md_oracledb::oracle::exec::initializationdata::imports::tipovenda
+class selenium_md_oracledb::oracle::exec::initializationdata::imports::tipovenda {
 	require selenium_md_oracledb::oracle::exec::initializationdata::imports::motivocancelacion
 
 	$pathFile = "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/imports"
@@ -9,11 +9,11 @@ class selenium_md_oracledb::oracle::exec::initializationdata::imports::tipovenda
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		source => 'puppet:///modules/selenium_md_oracledb/initializationdata/imports/tipo_venda.sql'
+		content => template("selenium_md_oracledb/initializationdata/imports/tipo_venda.sql.erb")
 	} ->
 
 	exec {'insert_tipo_venda':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @tipo_venda.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @tipo_venda.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',

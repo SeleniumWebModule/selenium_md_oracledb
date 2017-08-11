@@ -1,5 +1,5 @@
-class selenium_md_oracledb::oracle::exec::initializationdata::imports::funcionsistema
-	require selenium_md_oracledb::oracle::exec::initializationdata::imports::constants
+class selenium_md_oracledb::oracle::exec::initializationdata::imports::funcionsistema {
+	require selenium_md_oracledb::oracle::exec::initializationdata::imports::constantes
 
 	$pathFile = "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/imports"
 
@@ -9,11 +9,11 @@ class selenium_md_oracledb::oracle::exec::initializationdata::imports::funcionsi
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		source => 'puppet:///modules/selenium_md_oracledb/initializationdata/imports/funcion_sistema.sql'
+		content => template("selenium_md_oracledb/initializationdata/imports/funcion_sistema.sql.erb")
 	} ->
 
 	exec {'insert_funcion_sistema':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @funcion_sistema.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @funcion_sistema.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',

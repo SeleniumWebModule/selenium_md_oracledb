@@ -1,4 +1,4 @@
-class selenium_md_oracledb::oracle::exec::initializationdata::constants::init {
+class selenium_md_oracledb::oracle::exec::initializationdata::constantes::init {
 	file {'initializationdata': 
 		ensure  => 'directory',
 		path    => "${selenium_md_oracledb::oracleHome}/scripts/initializationdata",
@@ -6,19 +6,19 @@ class selenium_md_oracledb::oracle::exec::initializationdata::constants::init {
 		group   => 'dba',
 	} ->
 
-	file {'initializationdata': 
+	file {'constantes': 
 		ensure  => 'directory',
 		path    => "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/constantes/",
 		owner   => 'oracle',
 		group   => 'dba',
 	} ->	
 
-	file {'initializationdata': 
+	file {'brasil': 
 		ensure  => 'directory',
 		path    => "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/constantes/brasil",
 		owner   => 'oracle',
 		group   => 'dba',
-	} ->
+	} 
 
 	include selenium_md_oracledb::oracle::exec::initializationdata::constantes::nodo
 	include selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil::tipoparada

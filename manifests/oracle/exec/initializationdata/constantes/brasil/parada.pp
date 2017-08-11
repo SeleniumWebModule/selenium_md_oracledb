@@ -1,5 +1,5 @@
 class selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil::parada {
-	require selenium_md_oracledb::oracle::exec::initializationdata::constantes::colonia
+	require selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil::colonia
 
 	$pathFile = "${selenium_md_oracledb::oracleHome}/scripts/initializationdata/constantes/brasil"
 
@@ -9,11 +9,11 @@ class selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		source => 'puppet:///modules/selenium_md_oracledb/initializationdata/constantes/brasil/parada.sql'
+		content => template("selenium_md_oracledb/initializationdata/constantes/brasil/parada.sql.erb")
 	} ->
 
 	exec {'insert_parada':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @parada.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @parada.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',

@@ -1,4 +1,0 @@
-insert into PLAZA (PLAZA_ID, NOMBPLAZA, ACTIVO, FECMODIF, USUARIO_ID) values (41, 'GERAL', 1, TIMESTAMP '2012-06-22 12:09:03', 1);
-commit;
-
-exit

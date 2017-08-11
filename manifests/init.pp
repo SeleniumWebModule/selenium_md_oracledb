@@ -60,4 +60,5 @@ class selenium_md_oracledb ($oracleBaseName, $oracleVersion, $pathName, $dbname,
 		include selenium_md_oracledb::oracle::exec::environment_variables
 		include selenium_md_oracledb::oracle::configure::init
 		include selenium_md_oracledb::oracle::exec::dump::init
+		include selenium_md_oracledb::oracle::exec::initializationdata::init
  }

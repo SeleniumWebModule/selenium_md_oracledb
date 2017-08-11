@@ -9,11 +9,11 @@ class selenium_md_oracledb::oracle::exec::initializationdata::constantes::brasil
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		source => 'puppet:///modules/selenium_md_oracledb/initializationdata/constantes/brasil/tipo_parada.sql'
+		content => template("selenium_md_oracledb/initializationdata/constantes/brasil/tipo_parada.sql.erb")
 	} ->
 
 	exec {'insert_tipo_parada':
-		command     => "sqlplus ${selenium_md_oracledb::userdb}/${selenium_md_oracledb::passdb} as sysdba @tipo_parada.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @tipo_parada.sql > tipo_parada.log",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',
