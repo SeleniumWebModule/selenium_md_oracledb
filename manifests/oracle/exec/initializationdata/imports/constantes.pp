@@ -5,15 +5,17 @@ class selenium_md_oracledb::oracle::exec::initializationdata::imports::constante
 
 	file {'insert_constants':
 		ensure => file,
-		path   => "${pathFile}/constants.sql",
+		path   => "${pathFile}/constantes.sql",
 		owner  => 'oracle',
 		group  => 'dba',
 		mode   => '0770',
-		content => template("selenium_md_oracledb/initializationdata/imports/constants.sql.erb")
+		content => template("selenium_md_oracledb/initializationdata/imports/constantes.sql.erb"),
+		require => File['imports']
+
 	} ->
 
 	exec {'insert_constants':
-		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @constants.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @constantes.sql",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',
