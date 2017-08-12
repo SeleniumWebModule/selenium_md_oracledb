@@ -6,7 +6,7 @@ class selenium_md_oracledb::kernel::configure {
 	  atboot      => true,
 	  device      => 'tmpfs',
 	  fstype      => 'tmpfs',
-	  options     => 'size=1196m'
+	  options     => 'size=2048m'
 	} 
 
 	swap_file::files { 'default':
