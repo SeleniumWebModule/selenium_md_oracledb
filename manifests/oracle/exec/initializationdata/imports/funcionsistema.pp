@@ -13,11 +13,12 @@ class selenium_md_oracledb::oracle::exec::initializationdata::imports::funcionsi
 	} ->
 
 	exec {'insert_funcion_sistema':
-		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @funcion_sistema.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @funcion_sistema.sql > insert_funcion_sistema.log",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',
 		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"],
+		unless      => "test -f insert_funcion_sistema.log",
 		timeout     => 0
 	}  
 }

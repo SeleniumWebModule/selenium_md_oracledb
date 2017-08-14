@@ -16,6 +16,7 @@ class selenium_md_oracledb::oracle::exec::initializationdata::constantes::nodo {
 		cwd         => $pathFile,
 		user        => 'oracle',
 		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"],
+		unless      => "test -f insert_nodo.log",
 		timeout     => 0
 	} 
 }

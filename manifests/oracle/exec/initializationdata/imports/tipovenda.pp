@@ -13,11 +13,12 @@ class selenium_md_oracledb::oracle::exec::initializationdata::imports::tipovenda
 	} ->
 
 	exec {'insert_tipo_venda':
-		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @tipo_venda.sql",
+		command     => "sqlplus ${selenium_md_oracledb::systemusr}/${selenium_md_oracledb::systempass} as sysdba @insert_tipo_venda.sql > tipo_venda.log",
 		path        => "${selenium_md_oracledb::oracleHome}/bin:/usr/bin",
 		cwd         => $pathFile,
 		user        => 'oracle',
 		environment => ["ORACLE_HOME=${selenium_md_oracledb::oracleHome}", "ORACLE_SID=${selenium_md_oracledb::sid}"],
+		unless      => "test -f insert_tipo_venda.log",
 		timeout     => 0
 	}  
 }
